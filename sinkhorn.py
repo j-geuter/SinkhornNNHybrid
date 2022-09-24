@@ -1,0 +1,271 @@
+import torch
+import math
+import matplotlib.pyplot as plt
+import time
+
+from datacreation import euclidean_cost_matrix
+from utils import compute_c_transform
+
+
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+#TODO: implement log domain version
+#seems to be 3 times as fast as ot.sinkhorn for some reason (on float32 precision; on float64 it's only 1,5 times faster)
+def sinkhorn(
+                mu,
+                nu,
+                C,
+                eps,
+                max_iter = 100,
+                start = None,
+                log = False,
+                stopThr = 0,
+                tens_type = torch.float64,
+                verbose = True
+            ):
+    """
+    Sinkhorn's algorithm to compute the dual potentials and the dual problem value. Allows for parallelization.
+    :param mu: first distribution. Two-dimensional tensor where first dimension corresponds to number of samples and second dimension to sample size. Can also be 1D for a single sample.
+    :param nu: second distribution. Two-dimensional tensor as above.
+    :param C: cost matrix. Two-dimensional tensor.
+    :param eps: regularizer.
+    :param max_iter: maximum number of iterations.
+    :param start: first iteration's starting vector. If None, this is set to ones.
+    :param log: if True, returns the optimal plan and dual potentials alongside the cost; otherwise, returns only the cost.
+    :param stopThr: if greater than 0, the algorithm terminates if all approximations lie below this threshold, measured in terms of marginal constraint violation.
+    :param tens_type: determines the dtype of all tensors involved in computations. Defaults to float64 as this allows for greater accuracy.
+    :param verbose: if False, turns off all print statements.
+    """
+    if mu.dim() == 1:
+        mu = mu[None, :]
+    if nu.dim() == 1:
+        nu = nu[None, :]
+    if start == None:
+        start  = torch.ones(mu.size())
+    mu = mu.T.to(tens_type).to(device)
+    nu = nu.T.to(tens_type).to(device)
+    start = start.T.to(tens_type).to(device)
+    K = torch.exp(-C/eps).to(tens_type).to(device)
+    v = start
+    it = max_iter
+    for i in range(max_iter):
+        u = mu/torch.matmul(K, v)
+        v = nu/torch.matmul(K.T, u)
+        if stopThr > 0:
+            gamma = torch.matmul(torch.cat([torch.diag(u.T[j])[None, :] for j in range(u.size(1))]), torch.matmul(K, torch.cat([torch.diag(v.T[j])[None, :] for j in range(u.size(1))])))
+            mu_star = torch.matmul(gamma, torch.ones(u.size(0)).to(tens_type).to(device))
+            nu_star = torch.matmul(torch.ones(u.size(0)).to(tens_type).to(device), gamma)
+            mu_err = (mu.T - mu_star).abs().sum(1)
+            nu_err = (nu.T - nu_star).abs().sum(1)
+            if (mu_err < stopThr).sum().item() == mu_err.size(0) and (nu_err < stopThr).sum().item() == nu_err.size(0):
+                it = i + 1
+                if verbose:
+                    print(f'Accuracy below threshold. Early termination after {it} iterations.')
+                break
+    gamma = torch.matmul(torch.cat([torch.diag(u.T[j])[None, :] for j in range(u.size(1))]), torch.matmul(K, torch.cat([torch.diag(v.T[j])[None, :] for j in range(u.size(1))])))
+    cost = (gamma * C).sum(1).sum(1)
+    if not log:
+        return cost
+    else:
+        mu_star = torch.matmul(gamma, torch.ones(u.size(0)).to(tens_type).to(device))
+        nu_star = torch.matmul(torch.ones(u.size(0)).to(tens_type).to(device), gamma)
+        mu_err = (mu.T - mu_star).abs().sum(1)
+        nu_err = (nu.T - nu_star).abs().sum(1)
+        mu_err = mu_err.sum()/mu_err.size(0)
+        nu_err = nu_err.sum()/nu_err.size(0)
+        return {'cost': cost, 'plan': gamma, 'iterations': it, 'u': eps * torch.log(u).T, 'v': eps * torch.log(v).T, 'average marginal constraint violation': (mu_err + nu_err)/2}
+
+def compare_iterations(
+                            data,
+                            inits,
+                            names,
+                            acc = 'WS',
+                            max_iter = 25,
+                            eps = 0.24
+                        ):
+    """
+    Compares the accuracy of the sinkhorn function with different intializations for `v` for a varying number of iterations.
+    Accuracy either measured in terms of L1 error on WS distance or in terms of marginal constraint violation; can be controlled with the `acc` parameter.
+    :param data: data used for computations. Either a dict with keys 'd1', 'd2', 'u' and 'cost' or a list of such dicts in which case they are concatenated.
+    :param inits: initialization schemes. Takes functions that compute the first dual variable of the OT problem. If one is None, the default initialization is used instead.
+    :param names: names of initialization schemes.
+    :param acc: specifies how accuracy is computed. If set to 'WS' computes the average L1 error on the Wasserstein distance. If set to 'marg' computes the marginal constraint violations.
+    :param max_iter: maximum number of iterations.
+    :param eps: regularizer.
+    """
+    if type(data) == list:
+        d = {'d1': None, 'd2': None, 'u': None, 'cost': None}
+        for key in d.keys():
+            d[key] = torch.cat([data[i][key] for i in range(len(data))])
+    else:
+        d = data
+    iters = [int(i*max_iter/25) + 1 for i in range(25)]
+    errs = [[] for i in range(len(inits))]
+    l = int(math.sqrt(d['d1'].size(1)))
+    c = euclidean_cost_matrix(l, l, 2, True)
+    for i in range(25):
+        for j in range(len(inits)):
+            if acc == 'marg':
+                if inits[j] == None:
+                    err = sinkhorn(d['d1'], d['d2'], c, eps, max_iter=iters[i], log=True)['average marginal constraint violation'].item()
+                else:
+                    err = sinkhorn(d['d1'], d['d2'], c, eps, max_iter=iters[i], start=torch.exp(compute_c_transform(c, inits[j](torch.cat((d['d1'], d['d2']), 1)))/eps), log=True)['average marginal constraint violation'].item()
+            elif acc == 'WS':
+                if inits[j] == None:
+                    cost = sinkhorn(d['d1'], d['d2'], c, eps, max_iter=iters[i])
+                else:
+                    cost = sinkhorn(d['d1'], d['d2'], c, eps, max_iter=iters[i], start=torch.exp(compute_c_transform(c, inits[j](torch.cat((d['d1'], d['d2']), 1)))/eps))
+                err = ((cost - d['cost'].view(-1)).abs().sum()/cost.size(0)).item()
+            else:
+                raise ValueError('Not a valid `acc` type! Try `WS` for the L1 error on the Wasserstein distance or `marg` for the average marginal constraint violation.')
+            errs[j].append(err)
+    for j in range(len(inits)):
+        plt.plot(iters, errs[j], label = names[j])
+    plt.xlabel('Iterations')
+    plt.ylabel('Error on Wasserstein distance')
+    plt.legend()
+    plt.show()
+
+def compare_time(
+                    data,
+                    inits,
+                    names,
+                    eps = 0.24,
+                    acc = 'WS',
+                    min_iter = 20,
+                    max_iter = 100,
+                    step_size = 1
+                ):
+    """
+    Compares the time it takes for sinkhorn to achieve a certain level of accuracy in terms of L1 error on the Wasserstein distance or in terms of marginal constraint violation
+    for various initialization schemes.
+    :param data: data used for computations. Either a dict with keys 'd1', 'd2', 'u' and 'cost' or a list of such dicts in which case they are concatenated.
+    :param inits: initialization schemes. Takes functions that compute the first dual variable of the OT problem. If one is None, the default initialization is used instead.
+    :param names: names of initialization schemes.
+    :param eps: regularizer.
+    :param acc: specifies how accuracy is computed. If set to 'WS' computes the average L1 error on the Wasserstein distance. If set to 'marg' computes the marginal constraint violations.
+    :param min_iter: minimum number of iterations performed. Interpolates between `min_iter` and `max_iter`.
+    :param max_iter: maximum number of iterations performed in order to achieve required accuracy. Termination at `max_iter`.
+    :param step_size: step size of iterations. Tries to achieve required accuracy starting with a single iteration and then increases number of iterations successively by `step_size`.
+    """
+    if type(data) == list:
+        d = {'d1': None, 'd2': None, 'u': None, 'cost': None}
+        for key in d.keys():
+            d[key] = torch.cat([data[i][key] for i in range(len(data))])
+    else:
+        d = data
+    times = [[] for i in range(len(inits))]
+    errs = [[] for i in range(len(inits))]
+    l = int(math.sqrt(d['d1'].size(1)))
+    c = euclidean_cost_matrix(l, l, 2, True)
+    for j in range(len(inits)):
+        for l in range(min_iter, max_iter, step_size):
+            if acc == 'marg':
+                if inits[j] == None:
+                    t1 = time.time()
+                    sinkhorn(d['d1'], d['d2'], c, eps, max_iter=l) # one run without computing the log for more accurate timing
+                    t2 = time.time() - t1
+                    err = sinkhorn(d['d1'], d['d2'], c, eps, max_iter=l, log=True)['average marginal constraint violation'].item()
+                else:
+                    t1 = time.time()
+                    sinkhorn(d['d1'], d['d2'], c, eps, max_iter=l, start=torch.exp(compute_c_transform(c, inits[j](torch.cat((d['d1'], d['d2']), 1)))/eps))
+                    t2 = time.time() - t1
+                    err = sinkhorn(d['d1'], d['d2'], c, eps, max_iter=l, start=torch.exp(compute_c_transform(c, inits[j](torch.cat((d['d1'], d['d2']), 1)))/eps), log=True)['average marginal constraint violation'].item()
+            elif acc == 'WS':
+                if inits[j] == None:
+                    t1 = time.time()
+                    cost = sinkhorn(d['d1'], d['d2'], c, eps, max_iter=l)
+                    t2 = time.time() - t1
+                else:
+                    t1 = time.time()
+                    cost = sinkhorn(d['d1'], d['d2'], c, eps, max_iter=l, start=torch.exp(compute_c_transform(c, inits[j](torch.cat((d['d1'], d['d2']), 1)))/eps))
+                    t2 = time.time() - t1
+                err = ((cost - d['cost'].view(-1)).abs().sum()/cost.size(0)).item()
+            else:
+                raise ValueError('Not a valid `acc` type! Try `WS` for the L1 error on the Wasserstein distance or `marg` for the average marginal constraint violation.')
+            errs[j].append(err)
+            times[j].append(t2)
+    print(f'Errs: {errs}')
+    print(f'Times: {times}')
+    for j in range(len(inits)):
+        plt.plot(errs[j], times[j], label = names[j])
+    if acc == 'WS':
+        plt.xlabel('Average L1 error on the Wasserstein distance')
+    else:
+        plt.xlabel('Average marginal constraint violation')
+    plt.ylabel('Time in seconds')
+    plt.legend()
+    plt.show()
+
+def compare_accuracy(
+                        data,
+                        inits,
+                        names,
+                        max_acc = 2,
+                        min_acc = 0.2,
+                        eps = 0.24,
+                        acc = 'WS',
+                        max_iter = 100,
+                        step_size = 1
+                    ):
+    """
+    Compares the number of iterations needed for sinkhorn to achieve a specific accuracy threshold for varying initialization schemes.
+    Accuracy can be measured in terms of average L1 error on Wasserstein distance or in terms of marginal constraint violation.
+    :param data: data used for computations. Either a dict with keys 'd1', 'd2', 'u' and 'cost' or a list of such dicts in which case they are concatenated.
+    :param inits: initialization schemes. Takes functions that compute the first dual variable of the OT problem. If one is None, the default initialization is used instead.
+    :param names: names of initialization schemes.
+    :param max_acc: maximum accuracy required. Interpolates between `max_acc` and `min_acc`.
+    :param min_acc: minimum accuracy required.
+    :param eps: regularizer.
+    :param acc: specifies how accuracy is computed. If set to 'WS' computes the average L1 error on the Wasserstein distance. If set to 'marg' computes the marginal constraint violations.
+    :param max_iter: maximum number of iterations performed in order to achieve required accuracy. Termination at `max_iter`.
+    :param step_size: step size of iterations. Tries to achieve required accuracy starting with a single iteration and then increases number of iterations successively by `step_size`.
+    """
+    if type(data) == list:
+        d = {'d1': None, 'd2': None, 'u': None, 'cost': None}
+        for key in d.keys():
+            d[key] = torch.cat([data[i][key] for i in range(len(data))])
+    else:
+        d = data
+    accs = [max_acc - i * (max_acc - min_acc)/25 for i in range(25)]
+    iters = [[] for i in range(len(inits))]
+    errs = [[] for i in range(len(inits))]
+    l = int(math.sqrt(d['d1'].size(1)))
+    c = euclidean_cost_matrix(l, l, 2, True)
+    steps = [l for l in range(1, max_iter, step_size)]
+    for j in range(len(inits)):
+        for l in range(1, max_iter, step_size):
+            if acc == 'marg':
+                if inits[j] == None:
+                    err = sinkhorn(d['d1'], d['d2'], c, eps, max_iter=l, log=True)['average marginal constraint violation'].item()
+                else:
+                    err = sinkhorn(d['d1'], d['d2'], c, eps, max_iter=l, start=torch.exp(compute_c_transform(c, inits[j](torch.cat((d['d1'], d['d2']), 1)))/eps), log=True)['average marginal constraint violation'].item()
+            elif acc == 'WS':
+                if inits[j] == None:
+                    cost = sinkhorn(d['d1'], d['d2'], c, eps, max_iter=l)
+                else:
+                    cost = sinkhorn(d['d1'], d['d2'], c, eps, max_iter=l, start=torch.exp(compute_c_transform(c, inits[j](torch.cat((d['d1'], d['d2']), 1)))/eps))
+                err = ((cost - d['cost'].view(-1)).abs().sum()/cost.size(0)).item()
+            else:
+                raise ValueError('Not a valid `acc` type! Try `WS` for the L1 error on the Wasserstein distance or `marg` for the average marginal constraint violation.')
+            errs[j].append(err)
+            if err <= min_acc:
+                break
+    for j in range(len(inits)):
+        for i in range(len(accs)):
+            if errs[j][-1] <= accs[i]:
+                for l in range(len(errs[j])):
+                    if errs[j][l] <= accs[i]:
+                        iters[j].append(steps[l])
+                        break
+            else:
+                break
+    for j in range(len(inits)):
+        plt.plot(accs[:len(iters[j])], iters[j], label = names[j])
+    if acc == 'WS':
+        plt.xlabel('Average L1 error on the Wasserstein distance')
+    else:
+        plt.xlabel('Average marginal constraint violation')
+    plt.ylabel('Iterations')
+    plt.legend()
+    plt.show()
