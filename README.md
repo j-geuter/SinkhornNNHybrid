@@ -20,7 +20,7 @@ which is a `torch.utils.data.DataLoader` object and can be wrapped around a `tor
 Example:  
 
 ```python
-enerate_simple_data('train_data.py', length=28, mult=3)
+generate_simple_data('train_data.py', length=28, mult=3)
 dataloader = DataLoader(MNIST(root='./Data/mnist_dataset', train=False, download=True, transform=torchvision.transforms.ToTensor()), batch_size=10000)
 generate_dataset_data('test_data', 1, dataloader=dataloader, train=False, n_samples=10000)
 ```
