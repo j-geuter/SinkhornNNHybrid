@@ -54,6 +54,8 @@ testdata = load_data('test_data_0.py')
 c = euclidean_cost_matrix(28, 28, 2, True)
 eps = .2
 sinkhorn(testdata[0]['d1'][:5], testdata[0]['d2'][:5], c, eps, max_iter=1000, log=True) # computes the OT cost for the first five samples in test data. With `log=True`, also returns
+                                                                                        # the transport plan, the dual potentials of the OT dual problem, and the marginal constraint
+                                                                                        # violations
 input = d.net(torch.cat((testdata[0]['d1'][:5], testdata[0]['d2'][:5]), 1))
 input = torch.exp(input)/eps
 sinkhorn(testdata[0]['d1'][:5], testdata[0]['d2'][:5], c, eps, max_iter=500, start=input, min_start=1e-30, max_start=1e30) # uses network's prediction for initialization
@@ -80,6 +82,15 @@ Example:
   dual_approx = compute_dual(testdata[0]['d1'][:20], testdata[0]['d2'][:20], f, g)
   print((dual_approx - testdata[0]['cost'][:20].view(-1)).abs().sum()/20) # average error on the dual OT problem value
 
+```
+test code block
+```
+
+```python
+another block
+def f(x):
+  pass
+```
 
 ## networks
 This file contains the network class `FCNN`, which serves as the `net` attribute of the `DualApproximator` class in the `DualOTComputation` file and approximates a dual potential, given two input distributions. Each `FCNN` object has attributes `symmetry`, `doubletransform` and `zerosum` which default to `False`. If `symmetry` is set to `True`, the network will compute an output that is symmetric in the two input distributions. If `doubletransform` is set to `True`, it will instead compute the double- $c$-transform of the original output, which can be thought of as a $c$-concave approximation of the original output. If `zerosum` is set to `True`, it will enforce zero-sum outputs by subtracting a constant (note that this does not change the value of the dual problem as it is invariant under adding or subtracting constants to the potential).
