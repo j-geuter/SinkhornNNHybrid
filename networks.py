@@ -16,7 +16,7 @@ class FCNN(nn.Module):
         :param doubletransform: if True, returns the double c transform of the output.
         :param zerosum: if True, shifts the output such that it has zero sum (like the potentials in the training data).
         """
-        super(FCNN3, self).__init__()
+        super(FCNN, self).__init__()
         self.symmetry = symmetry
         self.doubletransform = doubletransform
         self.zerosum = zerosum

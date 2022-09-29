@@ -4,7 +4,7 @@ from torch.optim import Adam
 import torch.nn.functional as F
 import random
 
-from networks import *
+from networks import FCNN
 from datacreation import load_data, euclidean_cost_matrix, data_to_list
 from utils import compute_c_transform, compute_dual, compute_mean_conf
 
@@ -24,7 +24,7 @@ class DualApproximator:
     def __init__(
                     self,
                     length,
-                    networkclass,
+                    networkclass = FCNN,
                     lr = 0.005,
                     exponent = 2,
                     model = None
