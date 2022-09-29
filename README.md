@@ -53,9 +53,7 @@ from datacreation import load_data
 testdata = load_data('test_data_0.py')
 c = euclidean_cost_matrix(28, 28, 2, True)
 eps = .2
-sinkhorn(testdata[0]['d1'][:5], testdata[0]['d2'][:5], c, eps, max_iter=1000, log=True) # computes the OT cost for the first five samples in testdata. With `log=True`, also returns
-                                                                                        # the transport plan, the dual potentials of the OT dual problem, and the marginal constraint
-                                                                                        # violations
+sinkhorn(testdata[0]['d1'][:5], testdata[0]['d2'][:5], c, eps, max_iter=1000, log=True) # computes the OT cost for the first five samples in test data. With `log=True`, also returns
 input = d.net(torch.cat((testdata[0]['d1'][:5], testdata[0]['d2'][:5]), 1))
 input = torch.exp(input)/eps
 sinkhorn(testdata[0]['d1'][:5], testdata[0]['d2'][:5], c, eps, max_iter=500, start=input, min_start=1e-30, max_start=1e30) # uses network's prediction for initialization
