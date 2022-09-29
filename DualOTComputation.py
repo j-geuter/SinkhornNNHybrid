@@ -9,27 +9,6 @@ from datacreation import load_data, euclidean_cost_matrix, data_to_list
 from utils import compute_c_transform, compute_dual, compute_mean_conf
 
 
-# Try playing around with the c transform of the network outputs used in the sinkhorn computations. Maybe shift it to get better results? (where the exp of the transform is smaller or something?)
-
-# check if the results get better if we use data created with sinkhorn instead of ot.emd!
-
-# Does it make a difference whether we compute the WS distance after Sinkhorn via the transport plan or via the entropic dual?
-
-# add Danksagung?
-
-# add some other plots showing the efficiency of the algorithm, such as barycenter, color transfer, interpolations between images, ...?
-
-# mention amos and maybe others in intro or abstract?
-
-# show how maxloss in learn_ws compares to a loss on the error to the ground truth ws distance?
-
-# add one plot showing how learning on mnist improves testing on mnist (i.e. why amos' idea makes sense for specific datasets)
-
-# make sure learning rates are added to all plots in the thesis
-
-#l=[10.42,.278,.217,.181,.172,.161,.155,.143,.142,.143,.135,.125,.126,.121,.122,.120,.124,.121,.116,.113,.110,.114,.107,.111,.108,.103,.104,.106,.104,.102,.104,.098,.104,.098,.1,.1,.096,.098,.096,.095,.095,.095,.092,.094,.093,.094,.094,.091,.091,.098,.089,.096,.09,.089,.091,.091,.09,.088,.088,.088,.09,.089,.095,.09,.09,.087,.088,.088,.089,.087,.089,.088,.085,.085,.089,.087,.085,.086,.086,.086,.089,.084,.085,.085,.088,.088,.082,.082,.082,.083,.086,.085,.084,.089,.087,.086,.083,.087,.082,.085]
-#abs. errors on WS of 100 times 100k learn, 14by14, 16mio params, lr=0.001-0.0001 (saved)
-
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def loss_max_ws(t, t2):
