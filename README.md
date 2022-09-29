@@ -16,14 +16,25 @@ Most important for generating training data similar to the data used in the thes
 and a keyword argument `mult` which corresponds to the parameter $k_1$ from the thesis. This function can also be used for randomly generated test data.
 To produce test data sets which are not random, but originate from data sets such as MNIST, use the `generate_dataset_data` function. It takes as input a `name` (location where
 the data will be saved), a parameter `n_files` which controls how many data sets will be generated (and can most often be set to $1$), and, importantly, a `dataloader` parameter
-which is a `torch.utils.data.DataLoader` object and can be wrapped around a `torchvision.datasets` data set such as `torchvision.datasets.MNIST`.
+which is a `torch.utils.data.DataLoader` object and can be wrapped around a `torchvision.datasets` data set such as `torchvision.datasets.MNIST`.  
+Example:  
+  generate_simple_data('train_data.py', length=28, mult=3)
+  dataloader = DataLoader(MNIST(root='./Data/mnist_dataset', train=False, download=True, transform=torchvision.transforms.ToTensor()), batch_size=10000)
+  generate_dataset_data('test_data', 1, dataloader=dataloader, train=False, n_samples=10000)
 
 ## DualOTComputation
 This file mainly contains the `DualApproximator` class which lets you create and train a network.
 It takes as input the side length `length` of the image distributions and a network class, which defaults to the class `FCNN` from the file `networks`.  
 The network learns using the function `learn_potential` which takes as input the file name of a training data file. This function learns using an error on the dual potential of the OT
 problem. One can, however, also compute the OT value from this potential and use an error on the optimum (instead of the potential, i.e. the _optimizer_); this can be done
-with `learn_ws`. The respective testing functions are `test_potential` and `test_ws`.
+with `learn_ws`. The respective testing functions are `test_potential` and `test_ws`.  
+Example:  
+  d = DualApproximator(28)
+  d.learn_potential('train_data.py')
+  d.test_potential('test_data_0.py')
+  d.reset_params() # resets all trainable parameters to their default initialization
+  d.learn_ws('train_data.py') # defaults to learn function `loss_max_ws` which does not need dual potentials in training data
+  d.test_ws('test_data_0.py')
 
 ## sinkhorn
 This file contains the Sinkhorn algorithm and many functions accompanying it. The algorithm itself is implemented in the `sinkhorn` function, with the log domain version available
@@ -34,7 +45,20 @@ they can be controlled using the `min_start` and `max_start` keyword arguments, 
 It also needs a cost matrix `C`, which in the case for euclidean distances can be produced using the `euclidean_cost_matrix` function in `datacreation`. The `compare_iterations`,
 `compare_time` and `compare_accuracy` functions offer various functionality to compare the performance of different initialization schemes for the Sinkhorn algorithm.
 They take as input test data `data` and initialization schemes `inits` which is a list of initializations. For the default initialization, set one of the items to `None`. For
-using a `DualApproximator`'s network, simply pass the `net` attribute of the `DualApproximator` object.
+using a `DualApproximator`'s network, simply pass the `net` attribute of the `DualApproximator` object.  
+Example:  
+  from datacreation import load_data
+  testdata = load_data('test_data_0.py')
+  c = euclidean_cost_matrix(28, 28, 2, True)
+  eps = .2
+  sinkhorn(testdata[0]['d1'][:5], testdata[0]['d2'][:5], c, eps, max_iter=1000, log=True) # computes the OT cost for the first five samples in testdata. With `log=True`, also returns
+                                                                                          # the transport plan, the dual potentials of the OT dual problem, and the marginal constraint
+                                                                                          # violations
+  input = d.net(torch.cat((testdata[0]['d1'][:5], testdata[0]['d2'][:5]), 1))
+  input = torch.exp(input)/eps
+  sinkhorn(testdata[0]['d1'][:5], testdata[0]['d2'][:5], c, eps, max_iter=500, start=input, min_start=1e-30, max_start=1e30) # uses network's prediction for initialization
+  compare_iterations(testdata[0], [d.net, None], ['network', 'default'], max_iter=500, eps=eps, min_start=1e-35, max_start=1e35) # plots accuracy for default and network initialization
+                                                                                                                                 # w.r.t. the number of iterations
 
 ## utils
 This file contains various functions for creating different types of plots from data.
@@ -45,7 +69,16 @@ being the number of samples, $dim$ the dimension of the samples, and $l$ the sid
 steps that data was collected at. The function also takes as input a parameter `conf`, the desired confidence, i.e. this can e.g. be set to `.95` for a $95$ percent confidence interval.  
 `plot` is a simple function that lets you plot multiple types of data at once, collected over the same `x`-values.  
 `plot_conf` lets you plot various data time series alongside their confidence intervals, which will be shown as shaded areas around the plots. It takes as input `x`-values (which can also equal an integer in which case the x-values are interpolating between $0$ and that integer) and a list `y` where each item is a three-element list, where the first one corresponds to the lower values of
-a confidence interval, the second one to the mean values, and the third one to the upper values of a confidence interval. This corresponds to the output generated by `compute_mean_conf`. It also takes as input `labels` corresponding to the labels of each item in `y`, `x_label` and `y_label` corresponding to the labels on the x- and y-axis, optional `titles` for each plot, and an optional parameter `separate_plots`. If this is not passed to the function, all `y` items will appear in a single plot. `separate_plots` can be a list of tuples, where each tuple corresponds to the indices from `y` which should appear in the same plot. If, e.g., the first three items should appear in one plot, and the fourth item in a second plot, set `separete_plots=[(0,1,2), (3)]`. In case `separete_plots` is given, the optional `rows` and `columns` parameters let you control how many rows and columns the plots should be placed in.
+a confidence interval, the second one to the mean values, and the third one to the upper values of a confidence interval. This corresponds to the output generated by `compute_mean_conf`. It also takes as input `labels` corresponding to the labels of each item in `y`, `x_label` and `y_label` corresponding to the labels on the x- and y-axis, optional `titles` for each plot, and an optional parameter `separate_plots`. If this is not passed to the function, all `y` items will appear in a single plot. `separate_plots` can be a list of tuples, where each tuple corresponds to the indices from `y` which should appear in the same plot. If, e.g., the first three items should appear in one plot, and the fourth item in a second plot, set `separete_plots=[(0,1,2), (3)]`. In case `separete_plots` is given, the optional `rows` and `columns` parameters let you control how many rows and columns the plots should be placed in.  
+Example:  
+  visualize_data(testdata[0]['d1'][:5])
+  f = d.net(torch.cat((testdata[0]['d1'][:20], testdata[0]['d2'][:20]), 1))
+  c = euclidean_cost_matrix(28, 28, 2, True)
+  g = compute_c_transform(c, f)
+  f = compute_c_transform(c, g) # sets f to its double-c-transform. Can also be achieved directly by setting d.net.doubletransform=True
+  dual_approx = compute_dual(testdata[0]['d1'][:20], testdata[0]['d2'][:20], f, g)
+  print((dual_approx - testdata[0]['cost'][:20].view(-1)).abs().sum()/20) # average error on the dual OT problem value
+
 
 ## networks
 This file contains the network class `FCNN`, which serves as the `net` attribute of the `DualApproximator` class in the `DualOTComputation` file and approximates a dual potential, given two input distributions. Each `FCNN` object has attributes `symmetry`, `doubletransform` and `zerosum` which default to `False`. If `symmetry` is set to `True`, the network will compute an output that is symmetric in the two input distributions. If `doubletransform` is set to `True`, it will instead compute the double- $c$-transform of the original output, which can be thought of as a $c$-concave approximation of the original output. If `zerosum` is set to `True`, it will enforce zero-sum outputs by subtracting a constant (note that this does not change the value of the dual problem as it is invariant under adding or subtracting constants to the potential).
