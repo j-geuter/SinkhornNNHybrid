@@ -115,10 +115,10 @@ def compute_mean_conf(data, conf):
     x     = np.array(data)
     means = x.mean(0)
     stds  = x.std(0)
-    dof   = len(x[0]) - 1
+    dof   = len(x) - 1
     t     = np.abs(t_scipy.ppf((1 - conf)/2, dof))
-    lowers = means - stds * t/np.sqrt(len(x[0]))
-    uppers = means + stds * t/np.sqrt(len(x[0]))
+    lowers = means - stds * t/np.sqrt(len(x))
+    uppers = means + stds * t/np.sqrt(len(x))
     return(lowers, means, uppers)
 
 
