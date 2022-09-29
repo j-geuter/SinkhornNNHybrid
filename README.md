@@ -48,7 +48,7 @@ They take as input test data `data` and initialization schemes `inits` which is 
 using a `DualApproximator`'s network, simply pass the `net` attribute of the `DualApproximator` object.  
 Example:  
 
-  ```
+  ```python
   from datacreation import load_data
   testdata = load_data('test_data_0.py')
   c = euclidean_cost_matrix(28, 28, 2, True)
