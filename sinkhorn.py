@@ -389,16 +389,3 @@ def row_min(A, eps):
     Auxiliary function for log_sinkhorn.
     """
     return -eps * torch.log(torch.exp(-A/eps).sum(1))
-
-
-if __name__ == '__main__':
-    from datacreation import load_data
-    from DualOTComputation import *
-    testdata=load_data('Data/random_28by28_10k_test_bs100_mult3_nozeros_centered.py')
-    d=DualApproximator(28,FCNN3)
-    d.load('savedModels/random_28by28_100k_mult3_nozeros_lr0p005_33mioparams_FCNN3_0.pt')
-    c=euclidean_cost_matrix(28,28,2,True)
-    s=testdata[0]
-    f=d.net(torch.cat((testdata[0]['d1'][:20], testdata[0]['d2'][:20]), 1)).detach()
-    g=compute_c_transform(c,f)
-    fcc=compute_c_transform(c,g)

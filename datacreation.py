@@ -82,7 +82,15 @@ def generate_dataset_data(
                             length = 28
                         ):
     """
-    Very similar to `generate_structured_data`, but uses mnist samples instead of samples combined of two mnist digits. Also works with other data sets.
+    Generates samples from a DataLoader object passed via `dataloader`, and saves the data in a file named `name`.
+    :param name: file name where data will be saved (concatenated with '_i.py' for i in range(`n_files`)).
+    :param n_files: number of files created.
+    :param dataloader: A torch.DataLoader object.
+    :param remove_zeros: removes zeros from distributions by adding a constant 1e-3 to all points in the distribution before rescaling it to sum to 1.
+    :param train: if True, collects distributions from the dataset's training data. Otherwise, collects it from the test data.
+    :param batch_size: batch size of the dataset to be created.
+    :param n_samples: number of samples saved in each of the `n` files.
+    :param center: if True, centers potential data such that each potential has zero sum.
     :param length: lets you adjust the size of the output samples; `length` refers to the height resp. width. Defaults to 28 (original mnist sample size).
     """
     if dataloader == None:
@@ -108,77 +116,6 @@ def generate_dataset_data(
                 batch['u'] = batch['u'] - batch['u'].sum(1)[:, None]/(length*length)
             dataset.append(batch)
         save_data(dataset, f'{name}_{l}.py')
-
-def generate_structured_data(
-                                name,
-                                dataloader = None,
-                                n_files = 10,
-                                remove_zeros = True,
-                                exponent = 2,
-                                train = True,
-                                datasize = 800,
-                                batch_size = 100,
-                                n_samples = 100000,
-                                sinkhorn = False,
-                                method = 'sinkhorn',
-                                reg = 0.24,
-                                center = True
-                            ):
-    """
-    Generate training data from a given dataset and save it in files 'name_i' for i in range(`n_files`).
-    Creates `n_files` files with `n_samples` datapoints each.
-    :param name: file name where data will be saved (concatenated with '_i.py' for i in range(`n_files`)).
-    :param dataloader: A torch.DataLoader object.
-    :param n_files: number of files created.
-    :param remove_zeros: removes zeros from distributions by adding a constant 1e-3 to all points in the distribution before rescaling it to sum to 1.
-    :param exponent: exponent with which the euclidean distance in the cost matrix can be altered.
-    :param train: if True, collects distributions from the dataset's training data. Otherwise, collects it from the test data.
-    :param datasize: size of each dataset created by `create_more_data`. Results in datasize**2/2 samples in the dataset. For each new datapoint created by
-                        `generate_structured_data`, two random datapoints in the dataset will be chosen, and a new dataset will be created for each file.
-    :param batch_size: batch size of the dataset to be created.
-    :param n_samples: number of samples saved in each of the `n` files.
-    :param sinkhorn: if True, the Sinkhorn Algorithm is used for sample generation.
-    :param method: if sinkhorn==True, a method (cmp. POT package) can be passed. NOTE: Not all methods available will work.
-    :param reg: if sinkhorn==True, this parameter is the regularizer used for the Sinkhorn Algorithm. 0.24 is empirically good.
-    :param center: if True, centers potential data such that each potential has zero sum.
-    """
-    if dataloader == None:
-        dataloader = DataLoader(MNIST(root='./Data/mnist_dataset',train=train,download=True,transform=torchvision.transforms.ToTensor()), batch_size=datasize)
-    gen = iter(dataloader)
-    data = create_more_data(datasize, gen, True, remove_zeros)
-    n_data = data.size(0)
-    length = data.size(1)
-    cost_matrix = euclidean_cost_matrix(length, length, exponent, True)
-    for l in range(n_files):
-        dataset = []
-        print(f'Progress for file {l+1} of {n_files}:')
-        for i in tqdm(range(n_samples//batch_size)):
-            batch_data = []
-            for j in range(batch_size):
-                a = data[random.randint(0, n_data-1)].view(-1)
-                b = data[random.randint(0, n_data-1)].view(-1)
-                if not sinkhorn:
-                    log = ot.emd(a, b, cost_matrix, log=True)
-                else:
-                    log = ot.sinkhorn2(a, b, cost_matrix, reg, method=method, log=True)
-                    log[1]['cost'] = log[0].item()
-                    try: #handles different `method`s as they all come with different key names 'u', 'logu', 'log_u'.
-                        log[1]['u'] = log[1]['logu']
-                        log[1]['v'] = log[1]['logv']
-                    except:
-                        pass
-                    try:
-                        log[1]['u'] = log[1]['log_u']
-                        log[1]['v'] = log[1]['log_v']
-                    except:
-                        pass
-                batch_data.append({'d1': a.float()[None,:].to(device), 'd2': b.float()[None,:].to(device), 'u': log[1]['u'].float()[None,:].to(device), 'cost': torch.tensor([log[1]['cost']], dtype=torch.float)[None,:].to(device)})
-            batch = {'d1': torch.cat([batch_data[i]['d1'] for i in range(batch_size)], 0), 'd2': torch.cat([batch_data[i]['d2'] for i in range(batch_size)], 0), 'u': torch.cat([batch_data[i]['u'] for i in range(batch_size)], 0), 'cost': torch.cat([batch_data[i]['cost'] for i in range(batch_size)], 0)}
-            if center:
-                batch['u'] = batch['u'] - batch['u'].sum(1)[:, None]/(length*length)
-            dataset.append(batch)
-        save_data(dataset, f'{name}_{l}.py')
-        data = create_more_data(datasize, gen, True, remove_zeros)
 
 def resize_tensor(data, size, filename = None):
     """
@@ -317,24 +254,6 @@ def center_data_potential(from_file, to_file):
     dim = data[0]['u'].size(1)
     for batch in data:
         batch['u'] = batch['u'] - batch['u'].sum(1)[:, None]/dim
-    save_data(data, to_file)
-
-
-def center_data_potential2(from_file, to_file):
-    """
-    Takes data from file `from_file` as input and centers its potential data s.t. u^T*a = v^T*b, where a, b are the histograms and u, v are the dual potentials.
-    """
-    data = load_data(from_file)
-    dim = data[0]['u'].size(1)
-    length = int(math.sqrt(dim))
-    m = euclidean_cost_matrix(length, length, 2, True)
-    for batch in data:
-        u = batch['u']
-        v = compute_c_transform(m, u)
-        d1 = batch['d1']
-        d2 = batch['d2']
-        duals = [ot.lp.center_ot_dual(u[i], v[i], d1[i], d2[i]) for i  in range(u.size(0))]
-        batch['u'] = torch.cat(([duals[i][0][None,:] for i in range(u.size(0))]))
     save_data(data, to_file)
 
 

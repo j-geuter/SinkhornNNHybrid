@@ -400,17 +400,5 @@ class DualApproximator:
 if __name__ == '__main__':
     length = input("Input width of data: ")
     length = int(length)
-    #lr = input("Input learning rate: ")
-    #lr = float(lr)
     lr = 0.005
-    d = DualApproximator(length=length, networkclass=FCNN3, lr=lr)
-    testdata=[load_data('Data/test_random_28by28_10k_bs100_mult2_centered.py')]
-    testdata2=load_data('Data/mnist_10k_test_300data_bs100_centered_0.py')
-    testdata3=load_data('Data/real_mnist_28by28_10k_test_centered_withzeros.py')
-    testdata4=[load_data('Data/test_10k_real_mnist_14by14_withzeros_centered_0.py'),load_data('Data/test_10k_real_mnist_14by14_withoutzeros_centered_0.py'),load_data('Data/mnist_10k_test_300data_bs100_14by14_nozeros_centered_0.py'),load_data('Data/test_10k_random_14by14_withzeros_mult0_centered.py'),load_data('Data/test_10k_random_14by14_withzeros_mult2_centered.py'),load_data('Data/test_10k_random_14by14_nozeros_mult2_centered.py'),load_data('Data/test_10k_cifar_nozeros_centered_14by14_0.py')]
-    loc = 'Data/random_28by28_100k_bs100_centered_0.py'
-    testdata5 = [load_data('Data/random_28by28_10k_test_bs100_mult3_nozeros_centered.py'), load_data('Data/test_10k_random_28by28_mult0_withzeros_centered.py'), load_data('Data/real_mnist_28by28_10k_test_centered_nozeros.py'), load_data('Data/test_10k_cifar_nozeros_centered_28by28.py')]
-    #a = torch.tensor([.5,.25,.25,.0],dtype=torch.float)[None,:].to(device)
-    #b = torch.tensor([.0,.5,.0,.5], dtype=torch.float)[None,:].to(device)
-    #testdata = generate_simple_data(length=length, n_samples=10000, batchsize=10000)
-    #d.predict(a, b)
+    d = DualApproximator(length=length, networkclass=FCNN, lr=lr)
