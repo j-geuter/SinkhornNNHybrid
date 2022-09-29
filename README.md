@@ -47,7 +47,7 @@ It also needs a cost matrix `C`, which in the case for euclidean distances can b
 They take as input test data `data` and initialization schemes `inits` which is a list of initializations. For the default initialization, set one of the items to `None`. For
 using a `DualApproximator`'s network, simply pass the `net` attribute of the `DualApproximator` object.  
 Example:  
-  from datacreation import load_data
+  ```from datacreation import load_data
   testdata = load_data('test_data_0.py')
   c = euclidean_cost_matrix(28, 28, 2, True)
   eps = .2
@@ -59,6 +59,7 @@ Example:
   sinkhorn(testdata[0]['d1'][:5], testdata[0]['d2'][:5], c, eps, max_iter=500, start=input, min_start=1e-30, max_start=1e30) # uses network's prediction for initialization
   compare_iterations(testdata[0], [d.net, None], ['network', 'default'], max_iter=500, eps=eps, min_start=1e-35, max_start=1e35) # plots accuracy for default and network initialization
                                                                                                                                  # w.r.t. the number of iterations
+  ```
 
 ## utils
 This file contains various functions for creating different types of plots from data.
