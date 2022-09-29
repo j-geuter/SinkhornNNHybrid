@@ -200,7 +200,7 @@ class DualApproximator:
     def learn_ws(
                     self,
                     data_filename,
-                    loss_function = loss_f,
+                    loss_function = loss_max_ws,
                     epochs = 1,
                     batchsize = 100,
                     verbose = 0,
