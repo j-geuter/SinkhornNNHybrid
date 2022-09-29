@@ -8,9 +8,31 @@ from networks import *
 from datacreation import load_data, euclidean_cost_matrix, data_to_list
 from utils import compute_c_transform, compute_dual, compute_mean_conf
 
+
+# Try playing around with the c transform of the network outputs used in the sinkhorn computations. Maybe shift it to get better results? (where the exp of the transform is smaller or something?)
+
+# check if the results get better if we use data created with sinkhorn instead of ot.emd!
+
+# Does it make a difference whether we compute the WS distance after Sinkhorn via the transport plan or via the entropic dual?
+
+# add Danksagung?
+
+# add some other plots showing the efficiency of the algorithm, such as barycenter, color transfer, interpolations between images, ...?
+
+# mention amos and maybe others in intro or abstract?
+
+# show how maxloss in learn_ws compares to a loss on the error to the ground truth ws distance?
+
+# add one plot showing how learning on mnist improves testing on mnist (i.e. why amos' idea makes sense for specific datasets)
+
+# make sure learning rates are added to all plots in the thesis
+
+#l=[10.42,.278,.217,.181,.172,.161,.155,.143,.142,.143,.135,.125,.126,.121,.122,.120,.124,.121,.116,.113,.110,.114,.107,.111,.108,.103,.104,.106,.104,.102,.104,.098,.104,.098,.1,.1,.096,.098,.096,.095,.095,.095,.092,.094,.093,.094,.094,.091,.091,.098,.089,.096,.09,.089,.091,.091,.09,.088,.088,.088,.09,.089,.095,.09,.09,.087,.088,.088,.089,.087,.089,.088,.085,.085,.089,.087,.085,.086,.086,.086,.089,.084,.085,.085,.088,.088,.082,.082,.082,.083,.086,.085,.084,.089,.087,.086,.083,.087,.082,.085]
+#abs. errors on WS of 100 times 100k learn, 14by14, 16mio params, lr=0.001-0.0001 (saved)
+
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-def loss_f(t, t2):
+def loss_max_ws(t, t2):
     """
     A simple loss function that can be fed to `learn_ws` to learn the WS by simple gradient ascent on the WS computed
     from the potential instead of using a loss of that guess and the ground truth.
@@ -129,7 +151,7 @@ class DualApproximator:
                     for j in range(test_nb):
                         performance['pot'][j].append(self.test_potential(test_data[j]))
                     self.net.train()
-            if verbose >= 1:
+            if verbose == 1:
                 if WS_perf:
                     for j in range(test_nb):
                         performance['WS'][j].append(self.test_ws(test_data[j]))
@@ -261,12 +283,80 @@ class DualApproximator:
                     for j in range(test_nb):
                         performance['pot'][j].append(self.test_potential(test_data[j]))
                     self.net.train()
-            if verbose >= 1:
+            if verbose == 1:
                 if WS_perf:
                     for j in range(test_nb):
                         performance['WS'][j].append(self.test_ws(test_data[j]))
                 for j in range(test_nb):
                     performance['pot'][j].append(self.test_potential(test_data[j]))
+        return performance
+
+    def learn_multiple_files(
+                                self,
+                                filename,
+                                start,
+                                end,
+                                f,
+                                lr = None,
+                                meta_epochs = 1,
+                                loss_function = F.mse_loss,
+                                epochs = 1,
+                                batchsize = 100,
+                                verbose = 0,
+                                num_tests = 50,
+                                test_data = None,
+                                WS_perf = False,
+                                save_points = None,
+                                save_name = None
+                            ):
+        """
+        Wraps a learning function `f` to call it on multiple files of format `filename`_`start`.py, `filename`_{`start`+1}', ..., `filename`_`end`.
+        :param filename: determines files `filename`_`start`.py to `filename`_`end`.py to be used as files.
+        :param start: index of first file.
+        :param end: index of last file.
+        :param f: learning function.
+        :param lr: list of length `meta_epochs`*(`end`+1-`start`) containing learning rates. If None, learning rate remains unchanged.
+        :param meta_epochs: number of times all files are used for training.
+        :param loss_function: loss function to be used in backpropagation.
+        :param epochs: number of epochs performed on data during each meta epoch.
+        :param batchsize: batch size.
+        :param verbose: verbose parameter passed to the learning function.
+        :param num_tests: number of times test data is collected during each call of the learning function if `verbose` >= 2.
+        :param test_data: test data used for testing if verbose is True.
+        :param WS_perf: if True, also collects performance data on the WS distance approximation.
+        :param save_points: optional list containing tuples indicating the points where the network will be saved. First entry indicates meta epoch, second indicates file number.
+        :param save_name: file name for saving networks. Will be saved as `save_name`_`i`_`j`.pt where `i` is the meta epoch and `j` the file name number.
+        """
+        if save_points == None:
+            save_points = []
+        if test_data:
+            test_nb = len(test_data)
+        else:
+            test_nb = 0
+        if WS_perf:
+            performance = {'WS': [[] for i in range(test_nb)], 'pot': [[] for i in range(test_nb)]}
+        else:
+            performance = {'pot': [[] for i in range(test_nb)]}
+        for j in range(meta_epochs):
+            for i in range(start, end + 1):
+                if lr:
+                    self.lr = lr[j*(end + 1 - start) + i]
+                print(f'Metaepoch {j}, file {i} of {end}.')
+                log = f(f'{filename}_{i}.py', loss_function=loss_function, epochs=epochs, batchsize=batchsize, verbose=verbose, num_tests=num_tests, test_data=test_data)
+                if (j,i) in save_points:
+                    d.save(f'{save_name}_{j}_{i}.pt')
+                if j == 0 and i == 0:
+                    if WS_perf:
+                        for l in range(test_nb):
+                            performance['WS'][l] += log['WS'][l]
+                    for l in range(test_nb):
+                        performance['pot'][l] += log['pot'][l]
+                else:
+                    if WS_perf:
+                        for l in range(test_nb):
+                            performance['WS'][l] += log['WS'][l][1:] # remove the first value as it's the same as the last value from the previous iteration
+                    for l in range(test_nb):
+                        performance['pot'][l] += log['pot'][l][1:]
         return performance
 
     def predict(self, a, b):
@@ -326,3 +416,22 @@ class DualApproximator:
         if return_ws:
             return (l, ws_list)
         return l
+
+
+if __name__ == '__main__':
+    length = input("Input width of data: ")
+    length = int(length)
+    #lr = input("Input learning rate: ")
+    #lr = float(lr)
+    lr = 0.005
+    d = DualApproximator(length=length, networkclass=FCNN3, lr=lr)
+    testdata=[load_data('Data/test_random_28by28_10k_bs100_mult2_centered.py')]
+    testdata2=load_data('Data/mnist_10k_test_300data_bs100_centered_0.py')
+    testdata3=load_data('Data/real_mnist_28by28_10k_test_centered_withzeros.py')
+    testdata4=[load_data('Data/test_10k_real_mnist_14by14_withzeros_centered_0.py'),load_data('Data/test_10k_real_mnist_14by14_withoutzeros_centered_0.py'),load_data('Data/mnist_10k_test_300data_bs100_14by14_nozeros_centered_0.py'),load_data('Data/test_10k_random_14by14_withzeros_mult0_centered.py'),load_data('Data/test_10k_random_14by14_withzeros_mult2_centered.py'),load_data('Data/test_10k_random_14by14_nozeros_mult2_centered.py'),load_data('Data/test_10k_cifar_nozeros_centered_14by14_0.py')]
+    loc = 'Data/random_28by28_100k_bs100_centered_0.py'
+    testdata5 = [load_data('Data/random_28by28_10k_test_bs100_mult3_nozeros_centered.py'), load_data('Data/test_10k_random_28by28_mult0_withzeros_centered.py'), load_data('Data/real_mnist_28by28_10k_test_centered_nozeros.py'), load_data('Data/test_10k_cifar_nozeros_centered_28by28.py')]
+    #a = torch.tensor([.5,.25,.25,.0],dtype=torch.float)[None,:].to(device)
+    #b = torch.tensor([.0,.5,.0,.5], dtype=torch.float)[None,:].to(device)
+    #testdata = generate_simple_data(length=length, n_samples=10000, batchsize=10000)
+    #d.predict(a, b)
