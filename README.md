@@ -2,7 +2,8 @@
 Welcome to the SinkhornNNHybrid repository! This repo provides the PyTorch implementation for the thesis 'A Sinkhorn-NN Hybrid Algorithm for Optimal
 Transport'.  
 The code is structured in five files, `DualOTComputation`, `networks`, `utils`, `sinkhorn` and `datacreation`. The main files you'll need reproduce the results from the thesis are `DualOTComputation` and `sinkhorn`, and `utils` contains some useful functions that let you visualize or plot data. To generate training and testing data first, you'll need the
-`datacreation` file.
+`datacreation` file.  
+The `requirements.txt` file lists all dependencies and their versions.
 
 ## datacreation
 This file contains various functions that let you create and save datasets for training and testing. Usually, data `d` will come in the form of a list, where each item is a dictionary
