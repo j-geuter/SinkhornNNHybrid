@@ -1,0 +1,8 @@
+matplotlib==3.5.1
+numpy==1.22.0
+POT==0.8.2
+Results==0.1.1588569394
+scipy==1.7.3
+torch==1.10.1
+torchvision==0.11.2
+tqdm==4.62.3
