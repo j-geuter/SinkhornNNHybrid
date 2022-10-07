@@ -4,7 +4,7 @@ from tqdm import tqdm
 import numpy as np
 import torch
 import torchvision
-from torchvision.datasets import MNIST
+from torchvision.datasets import MNIST, CIFAR10
 from torchvision.transforms import Resize, ToTensor, Compose
 from torch.utils.data import DataLoader
 import random

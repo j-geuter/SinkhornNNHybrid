@@ -3,7 +3,8 @@ Welcome to the SinkhornNNHybrid repository! This repo provides the PyTorch imple
 Transport'.  
 The code is structured in five files, `DualOTComputation`, `networks`, `utils`, `sinkhorn` and `datacreation`. The main files you'll need reproduce the results from the thesis are `DualOTComputation` and `sinkhorn`, and `utils` contains some useful functions that let you visualize or plot data. To generate training and testing data first, you'll need the
 `datacreation` file.  
-The `requirements.txt` file lists all dependencies and their versions.
+The `requirements.txt` file lists all dependencies and their versions.  
+Note: the project has not been tested for CUDA compatibility.
 
 ## datacreation
 This file contains various functions that let you create and save datasets for training and testing. Usually, data `d` will come in the form of a list, where each item is a dictionary
@@ -94,3 +95,66 @@ print((dual_approx - testdata[0]['cost'][:20].view(-1)).abs().sum()/20) # averag
 
 ## networks
 This file contains the network class `FCNN`, which serves as the `net` attribute of the `DualApproximator` class in the `DualOTComputation` file and approximates a dual potential, given two input distributions. Each `FCNN` object has attributes `symmetry`, `doubletransform` and `zerosum` which default to `False`. If `symmetry` is set to `True`, the network will compute an output that is symmetric in the two input distributions. If `doubletransform` is set to `True`, it will instead compute the double- $c$-transform of the original output, which can be thought of as a $c$-concave approximation of the original output. If `zerosum` is set to `True`, it will enforce zero-sum outputs by subtracting a constant (note that this does not change the value of the dual problem as it is invariant under adding or subtracting constants to the potential).
+
+## Results from the Thesis
+The results from the thesis can be reproduced as follows.
+
+### Data
+Training data is generated using the `generate_simple_data` function, which was used to create ten datasets with 100,000 samples each (as one file with a million samples might cause memory issues). The test datasets were created using `generate_simple_data` and `generate_dataset_data`. Assuming the `datacreation.py` environment was loaded and that the Quick, Draw!
+dataset was downloaded into a folder `./Data/QuickDraw` in the `.npy` version (see [this link](https://github.com/googlecreativelab/quickdraw-dataset) on more details):
+
+```python
+for i in range(10):
+  generate_simple_data(f'Data/training_file_{i}.py', length=28, mult=3)
+generate_simple_data('Data/test_file_0.py')
+generate_dataset_data('Data/test_file_1.py', dataloader=DataLoader(MNIST(root='./Data/mnist_dataset', train=False, download=True, transform=torchvision.transforms.ToTensor()), batch_size=10000), train=False, n_samples=10000)
+generate_dataset_data('Data/test_file_2.py', dataloader=DataLoader(CIFAR10(root='./Data/CIFAR', train=False, download=True, transform=torchvision.transforms.ToTensor()), batch_size=10000), train=False, n_samples=10000)
+teddies = load_files_quickdraw(categories=1, per_category=10000, rand=False, names=['teddy-bear'], dir='./Data/QuickDraw/')['teddy-bear']
+teddies = torch.tensor(teddies)
+generate_dataset_data('Data/test_file_3.py', train=False, n_samples=10000, data=teddies)
+```
+
+### Loss on Wasserstein distance
+To reproduce the results where a loss on the dual potential was compared to a loss on the Wasserstein distance for training the network, use the following code (assuming the `DualOTComputation.py` environment was loaded):
+
+```python
+testdata = [load_data(f'Data/test_file_{i}.py') for i in range(4)]
+d = DualApproximator(28)
+WS_perf = d.learn_ws('Data/training_file_0.py', verbose=2, num_tests=30, test_data=testdata) # returns Wasserstein errors for all four test datasets over the course of learning
+pot_perf = d.learn_potential('Data/training_file_0.py', verbose=2, num_tests=30, test_data=testdata) # returns potential errors for all four test datasets over the course of learning
+```
+
+Now the results can be plotted using the `plot_conf` function in `utils.py`.
+
+### Train on MNIST Data
+To reproduce the results where training on our regular training data was compared to training on MNIST data, produce an MNIST training dataset (assuming the `datacreation.py` environment was loaded):
+
+```python
+generate_dataset_data('Data/training_MNIST.py', dataloader=DataLoader(MNIST(root='./Data/mnist_dataset', train=True, download=True, transform=torchvision.transforms.ToTensor()), batch_size=60000), train=True, n_samples=100000)
+```
+
+and use this for training using `learn_potential` in the same way as in the previous example.
+
+### Train Network
+To train a network on one million samples as the network used in our main experiments, run the following (assuming the `DualOTComputation.py` environment was loaded):
+
+```python
+lr = [0.005 - i*0.0005 for i in range(10)]
+d = DualApproximator(28)
+d.learn_multiple_files('Data/training_file', 0, 9, d.learn_potential, lr=lr)
+```
+
+If you want to train for longer, you can do so using the `meta_epochs` parameter of the `learn_multiple_files` function, which allows you to go over the training files multiple times. If you do so, during each `meta_epoch` all files will be used once for training, and every time a file is loaded its samples are shuffled at random before used for training.
+
+### Results
+Now that the network has been trained, most of the results can be computed from a single call of the `compare_iterations` in `sinkhorn.py` for each test dataset. Assuming that the `sinkhorn.py` environment was loaded and `d` as before:
+
+```python
+testdata = [load_data(f'Data/test_file_{i}.py') for i in range(4)]
+results = []
+d.net.eval()
+for t in testdata:
+  results.append(compare_iterations(t[:10], [None, d.net], ['default', 'net'], max_iter=2500, eps=.2, min_start=1e-35, max_start=1e35, plot=False, timeit=True))
+```
+Now `r = results[i]` contains the results for the respective test dataset. `r[0]['WS']` and `r[0]['marg']` contain information on the Wasserstein distance and dual potential errors;
+`r[1]` on the time it took for computations. In each of these locations, the values for the default initialization can be accessed at position `[0]` and for the network at position `[1]`. This will give you a 3-tuple, where each item is an array, the first one being the lower bound on the $95\%$ confidence interval, the second one the mean, and the third one the upper bound on the confidence interval. The results can be visualized with the `plot_conf` function in `utils.py`.
