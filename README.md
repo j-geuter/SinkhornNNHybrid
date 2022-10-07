@@ -120,7 +120,7 @@ teddies = torch.tensor(teddies)
 generate_dataset_data('Data/test_file_3.py', train=False, n_samples=10000, data=teddies)
 ```
 
-### Loss on Wasserstein distance
+### Loss on Wasserstein Distance
 To reproduce the results where a loss on the dual potential was compared to a loss on the Wasserstein distance for training the network, use the following code (assuming the `DualOTComputation.py` environment was loaded):
 
 ```python
