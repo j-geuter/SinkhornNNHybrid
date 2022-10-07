@@ -6,7 +6,10 @@ The code is structured in five files, `DualOTComputation`, `networks`, `utils`, 
 The `requirements.txt` file lists all dependencies and their versions.  
 Note: the project has not been tested for CUDA compatibility.
 
-## datacreation
+## Code Overview
+We will first have a quick look at the five files containing all code, before going over how to replicate the results from the thesis in the next section.
+
+### datacreation
 This file contains various functions that let you create and save datasets for training and testing. Usually, data `d` will come in the form of a list, where each item is a dictionary
 with keywords `d1` and `d2` denoting batches of distributions, `cost` denoting the respective transport costs, and `u` denoting the dual potentials. A sample corresponds to
 `(d['d1'][i], d['d1'][i], d['u'][i], d['cost'][i])`. The `load_data` and `save_data` functions are simple functions that let you open
@@ -27,7 +30,7 @@ dataloader = DataLoader(MNIST(root='./Data/mnist_dataset', train=False, download
 generate_dataset_data('test_data', 1, dataloader=dataloader, train=False, n_samples=10000)
 ```
 
-## DualOTComputation
+### DualOTComputation
 This file mainly contains the `DualApproximator` class which lets you create and train a network.
 It takes as input the side length `length` of the image distributions and a network class, which defaults to the class `FCNN` from the file `networks`.  
 The network learns using the function `learn_potential` which takes as input the file name of a training data file. This function learns using an error on the dual potential of the OT
@@ -44,7 +47,7 @@ d.learn_ws('train_data.py') # defaults to learn function `loss_max_ws` which doe
 d.test_ws('test_data_0.py')
 ```
 
-## sinkhorn
+### sinkhorn
 This file contains the Sinkhorn algorithm and many functions accompanying it. The algorithm itself is implemented in the `sinkhorn` function, with the log domain version available
 through the `log_sinkhorn` function.  
 `sinkhorn` takes as input distributions `mu` and `nu`, which can be one-dimensional if just one sample is passed, or two-dimensional for multiple samples which are processed in a
@@ -71,7 +74,7 @@ compare_iterations(testdata[0], [d.net, None], ['network', 'default'], max_iter=
                                                                                                                                # w.r.t. the number of iterations
 ```
 
-## utils
+### utils
 This file contains various functions for creating different types of plots from data.
 `visualize_data` lets you visualize samples from your training and testing data, taking as input a tensor or array `data` of size $n\times dim$ or $n\times l\times l$ with $n$
 being the number of samples, $dim$ the dimension of the samples, and $l$ the side length.  
@@ -93,7 +96,7 @@ dual_approx = compute_dual(testdata[0]['d1'][:20], testdata[0]['d2'][:20], f, g)
 print((dual_approx - testdata[0]['cost'][:20].view(-1)).abs().sum()/20) # average error on the dual OT problem value
 ```
 
-## networks
+### networks
 This file contains the network class `FCNN`, which serves as the `net` attribute of the `DualApproximator` class in the `DualOTComputation` file and approximates a dual potential, given two input distributions. Each `FCNN` object has attributes `symmetry`, `doubletransform` and `zerosum` which default to `False`. If `symmetry` is set to `True`, the network will compute an output that is symmetric in the two input distributions. If `doubletransform` is set to `True`, it will instead compute the double- $c$-transform of the original output, which can be thought of as a $c$-concave approximation of the original output. If `zerosum` is set to `True`, it will enforce zero-sum outputs by subtracting a constant (note that this does not change the value of the dual problem as it is invariant under adding or subtracting constants to the potential).
 
 ## Results from the Thesis
@@ -106,7 +109,7 @@ dataset was downloaded into a folder `./Data/QuickDraw` in the `.npy` version (s
 ```python
 for i in range(10):
   generate_simple_data(f'Data/training_file_{i}.py', length=28, mult=3)
-generate_simple_data('Data/test_file_0.py')
+generate_simple_data('Data/test_file_0.py', length=28, mult=3, n_samples=10000)
 generate_dataset_data('Data/test_file_1.py', dataloader=DataLoader(MNIST(root='./Data/mnist_dataset', train=False, download=True, transform=torchvision.transforms.ToTensor()), batch_size=10000), train=False, n_samples=10000)
 generate_dataset_data('Data/test_file_2.py', dataloader=DataLoader(CIFAR10(root='./Data/CIFAR', train=False, download=True, transform=torchvision.transforms.ToTensor()), batch_size=10000), train=False, n_samples=10000)
 teddies = load_files_quickdraw(categories=1, per_category=10000, rand=False, names=['teddy-bear'], dir='./Data/QuickDraw/')['teddy-bear']
@@ -120,11 +123,18 @@ To reproduce the results where a loss on the dual potential was compared to a lo
 ```python
 testdata = [load_data(f'Data/test_file_{i}.py') for i in range(4)]
 d = DualApproximator(28)
-WS_perf = d.learn_ws('Data/training_file_0.py', verbose=2, num_tests=30, test_data=testdata) # returns Wasserstein errors for all four test datasets over the course of learning
-pot_perf = d.learn_potential('Data/training_file_0.py', verbose=2, num_tests=30, test_data=testdata) # returns potential errors for all four test datasets over the course of learning
+pot_perf = d.average_performance('Data/training_file_0.py', d.learn_potential, test_data=testdata) # computes the average error on the dual potential across 10 instances of the network
+WS_perf  = d.average_performance('Data/training_file_0.py', d.learn_ws, test_data=testdata) # computes the average error on the Wasserstein distance across 10 instances
 ```
 
-Now the results can be plotted using the `plot_conf` function in `utils.py`.
+Note that calling `average_performance` resets all learnable parameters of the `net` attribute, e.g. deletes all learning progress!
+It returns, for each test dataset in `test_data`, three arrays, where the second one corresponds to the average performance over 10 instances of the network, measured at $30$ points in time during training (can be adjusted with the `num_tests` parameter).
+Now the results can be plotted using the `plot_conf` function in `utils.py`:
+
+```python
+from utils import plot_conf
+plot_conf(100000, pot_perf+WS_perf, ['pot']*4+['WS']*4, 'training samples', 'MSE error on potential', titles=['random','teddies', 'MNIST', 'CIFAR'], separate_plots=[(0,4), (2,5), (3,6), (4,7)], rows=2, columns=2)
+```
 
 ### Train on MNIST Data
 To reproduce the results where training on our regular training data was compared to training on MNIST data, produce an MNIST training dataset (assuming the `datacreation.py` environment was loaded):
@@ -133,7 +143,7 @@ To reproduce the results where training on our regular training data was compare
 generate_dataset_data('Data/training_MNIST.py', dataloader=DataLoader(MNIST(root='./Data/mnist_dataset', train=True, download=True, transform=torchvision.transforms.ToTensor()), batch_size=60000), train=True, n_samples=100000)
 ```
 
-and use this for training using `learn_potential` in the same way as in the previous example.
+and use this for training using `DualApproximator.average_performance` in the same way as in the previous example.
 
 ### Train Network
 To train a network on one million samples as the network used in our main experiments, run the following (assuming the `DualOTComputation.py` environment was loaded):
@@ -141,7 +151,7 @@ To train a network on one million samples as the network used in our main experi
 ```python
 lr = [0.005 - i*0.0005 for i in range(10)]
 d = DualApproximator(28)
-d.learn_multiple_files('Data/training_file', 0, 9, d.learn_potential, lr=lr)
+d.learn_multiple_files('Data/training_file', 0, 9, d.learn_potential, lr=lr) # via the `verbose`, `num_tests` and `test_data` parameters, performance on test data can be collected as before
 ```
 
 If you want to train for longer, you can do so using the `meta_epochs` parameter of the `learn_multiple_files` function, which allows you to go over the training files multiple times. If you do so, during each `meta_epoch` all files will be used once for training, and every time a file is loaded its samples are shuffled at random before used for training.
@@ -157,4 +167,9 @@ for t in testdata:
   results.append(compare_iterations(t[:10], [None, d.net], ['default', 'net'], max_iter=2500, eps=.2, min_start=1e-35, max_start=1e35, plot=False, timeit=True))
 ```
 Now `r = results[i]` contains the results for the respective test dataset. `r[0]['WS']` and `r[0]['marg']` contain information on the Wasserstein distance and dual potential errors;
-`r[1]` on the time it took for computations. In each of these locations, the values for the default initialization can be accessed at position `[0]` and for the network at position `[1]`. This will give you a 3-tuple, where each item is an array, the first one being the lower bound on the $95\%$ confidence interval, the second one the mean, and the third one the upper bound on the confidence interval. The results can be visualized with the `plot_conf` function in `utils.py`.
+`r[1]` on the time it took for computations. In each of these locations, the values for the default initialization can be accessed at position `[0]` and for the network at position `[1]`. This will give you a 3-tuple, where each item is an array, the first one being the lower bound on the $95\%$ confidence interval, the second one the mean, and the third one the upper bound on the confidence interval. So for example, the upper bound on the $95\%$ confidence interval of the marginal constraint error of the default initialization for the first test dataset can be found at `results[0][0]['marg'][0][2]`. The results can be visualized with the `plot_conf` function from `utils.py` again, so for example for visualizing the errors on the marginal constraint alongside the confidence intervals across all four test datasets run:
+
+```python
+from utils import plot_conf
+plot_conf(2500, results[0][0]['marg']+results[1][0]['marg']+results[2][0]['marg']+results[3][0]['marg'], ['default', 'net']*4, 'number of iterations', 'marginal constraint violation', titles=['random', 'teddies', 'MNIST', 'CIFAR'], separete_plots=[(0,1), (2,3), (4,5), (6,7)], rows=2, columns=2)
+```

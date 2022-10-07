@@ -9,6 +9,7 @@ from torchvision.transforms import Resize, ToTensor, Compose
 from torch.utils.data import DataLoader
 import random
 import pickle
+import os
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -31,12 +32,48 @@ def save_data(data, name):
     with open(name, 'wb') as f:
         pickle.dump(data, f)
 
+def load_files_quickdraw(dir, categories = 8, per_category = 1000, rand = True, names = None, not_names = None):
+	'''
+	Loads data. NOTE: Change directory accordingly. CAREFUL: attempting to load multiple categories at once (50+) can kill the call.
+    :param dir: directory where data is stored.
+	:param categories: number of categories to load. If set to 'ALL', loads all categories. WARNING: this will most likely kill the call.
+	:param per_category: number of samples to load per category. Set to `None` to load complete category.
+	:param rand: if True, chooses random categories to load. If False, either loads categories from `names` if passed or the first `categories` from alphabetical order.
+	:param names: optional argument to pass specific names of categories to load. Iterable that contains strings. Needs `rand` to be set to False. Ignores the `categories` argument if passed.
+	:param not_names: Iterable that contains strings. If passed, the selection of names makes sure not to take any names in `not_names`.
+	:return: dictionary with category names as keys, and np.arrays as data.
+	'''
+	filenames = sorted(os.listdir(dir))
+	if categories == 'ALL':
+		categories = len(filenames)
+	if not rand:
+		if names:
+			for i in range(len(names)):
+				if names[i].endswith('.npy'):
+					names[i] = names[i][:-4]
+			data = {name: None for name in names}
+		else:
+			filenames = [filename for filename in filenames if not filename in not_names]
+			data = {name[:-4]: None for name in filenames[:categories]}
+	else:
+		if not_names == None:
+			not_names = []
+		for i in range(len(not_names)):
+			if not not_names[i].endswith('.npy'):
+				not_names[i] += '.npy'
+		cats = random.sample([filename for filename in filenames if not filename in not_names], categories)
+		data = {name[:-4]: None for name in cats}
+	for name in data:
+		data[name] = np.load(dir+name+'.npy')[:per_category]
+	return data
+
 def create_more_data(
                         n_samples = 1000,
                         dataloader = 'MNIST',
                         rescale = True,
                         remove_zeros = True,
-                        original = False
+                        original = False,
+                        data = None
                     ):
     """
     Increase amount of training data available by taking the first `n_samples` of `dataset` and combining any two of them into a new distribution.
@@ -48,11 +85,15 @@ def create_more_data(
     :param rescale: if True, rescales each sample to sum to one.
     :param remove_zeros: if True, adds 1e-3 to each point in the distribution before rescaling. This prevents arbitrary values at these points of dual solutions in the OT problem.
     :param original: if True, this parameter allows for using the original mnist samples instead of creating samples from two mnist samples each. Essentially, this will transform MNIST into a tensor object and return it.
+    :param data: optional parameter, with which one can pass a three-dimensional tensor of dim (n_samples, length, length) containing data to be used instead.
     :return: tensor of size approx. (n_samples**2/2, samplesize).
     """
-    if dataloader == 'MNIST':
-        dataloader = iter(DataLoader(MNIST(root='./Data/mnist_dataset',train=True,download=True,transform=torchvision.transforms.ToTensor()), batch_size=n_samples))
-    data = next(dataloader)[0].squeeze().double().to(device)
+    if data == None:
+        if dataloader == 'MNIST':
+            dataloader = iter(DataLoader(MNIST(root='./Data/mnist_dataset',train=True,download=True,transform=torchvision.transforms.ToTensor()), batch_size=n_samples))
+        data = next(dataloader)[0].squeeze().double().to(device)
+    else:
+        data = data.double().to(device)
     if data.dim() == 4: # this is the case for colored images, in which case they're converted to black and white
         data = data.sum(1)
     if original:
@@ -72,19 +113,19 @@ def create_more_data(
 
 def generate_dataset_data(
                             name,
-                            n_files,
                             dataloader = None,
                             remove_zeros = True,
                             train = True,
                             batch_size = 100,
                             n_samples = 100000,
                             center = True,
-                            length = 28
+                            length = 28,
+                            data = None
                         ):
     """
     Generates samples from a DataLoader object passed via `dataloader`, and saves the data in a file named `name`.
-    :param name: file name where data will be saved (concatenated with '_i.py' for i in range(`n_files`)).
-    :param n_files: number of files created.
+    Can also generate samples from data passed via the optional `data` argument.
+    :param name: file name where data will be saved.
     :param dataloader: A torch.DataLoader object.
     :param remove_zeros: removes zeros from distributions by adding a constant 1e-3 to all points in the distribution before rescaling it to sum to 1.
     :param train: if True, collects distributions from the dataset's training data. Otherwise, collects it from the test data.
@@ -92,30 +133,35 @@ def generate_dataset_data(
     :param n_samples: number of samples saved in each of the `n` files.
     :param center: if True, centers potential data such that each potential has zero sum.
     :param length: lets you adjust the size of the output samples; `length` refers to the height resp. width. Defaults to 28 (original mnist sample size).
+    :param data: optional parameter, with which one can pass a tensor that contains two-dimensional or three-dimensional data to be used.
     """
-    if dataloader == None:
-        dataloader = DataLoader(MNIST(root='./Data/mnist_dataset',train=train,download=True,transform=torchvision.transforms.ToTensor()), batch_size=60000)
-    gen = iter(dataloader)
-    data = create_more_data(60000, gen, True, remove_zeros, True)
+    if data == None:
+        if dataloader == None:
+            dataloader = DataLoader(MNIST(root='./Data/mnist_dataset',train=train,download=True,transform=torchvision.transforms.ToTensor()), batch_size=60000)
+        gen = iter(dataloader)
+        data = create_more_data(60000, gen, True, remove_zeros, True)
+    else:
+        if data.dim() == 2:
+            l = int(math.sqrt(data.size(1)))
+            data = data.reshape(data.size(0), l, l)
+            data = create_more_data(60000, None, True, remove_zeros, True, data)
     data = data.reshape(data.size(0), data.size(1)*data.size(2))
     if length*length != data.size(1):
         data = resize_tensor(data, (length, length))
     cost_matrix = euclidean_cost_matrix(length, length, 2, True)
-    for l in range(n_files):
-        dataset = []
-        a = torch.cat(([data[torch.randperm(data.size(0))] for i in range(n_samples//data.size(0) + 1)]))
-        b = torch.cat(([data[torch.randperm(data.size(0))] for i in range(n_samples//data.size(0) + 1)]))
-        print(f'Progress for file {l+1} of {n_files}:')
-        for i in tqdm(range(n_samples//batch_size)):
-            batch_data = []
-            for j in range(batch_size):
-                log = ot.emd(a[i*batch_size+j], b[i*batch_size+j], cost_matrix, log=True)
-                batch_data.append({'d1': a[i*batch_size+j].float()[None,:].to(device), 'd2': b[i*batch_size+j].float()[None,:].to(device), 'u': log[1]['u'].float()[None,:].to(device), 'cost': torch.tensor([log[1]['cost']], dtype=torch.float)[None,:].to(device)})
-            batch = {'d1': torch.cat([batch_data[i]['d1'] for i in range(batch_size)], 0), 'd2': torch.cat([batch_data[i]['d2'] for i in range(batch_size)], 0), 'u': torch.cat([batch_data[i]['u'] for i in range(batch_size)], 0), 'cost': torch.cat([batch_data[i]['cost'] for i in range(batch_size)], 0)}
-            if center:
-                batch['u'] = batch['u'] - batch['u'].sum(1)[:, None]/(length*length)
-            dataset.append(batch)
-        save_data(dataset, f'{name}_{l}.py')
+    dataset = []
+    a = torch.cat(([data[torch.randperm(data.size(0))] for i in range(n_samples//data.size(0) + 1)]))
+    b = torch.cat(([data[torch.randperm(data.size(0))] for i in range(n_samples//data.size(0) + 1)]))
+    for i in tqdm(range(n_samples//batch_size)):
+        batch_data = []
+        for j in range(batch_size):
+            log = ot.emd(a[i*batch_size+j], b[i*batch_size+j], cost_matrix, log=True)
+            batch_data.append({'d1': a[i*batch_size+j].float()[None,:].to(device), 'd2': b[i*batch_size+j].float()[None,:].to(device), 'u': log[1]['u'].float()[None,:].to(device), 'cost': torch.tensor([log[1]['cost']], dtype=torch.float)[None,:].to(device)})
+        batch = {'d1': torch.cat([batch_data[i]['d1'] for i in range(batch_size)], 0), 'd2': torch.cat([batch_data[i]['d2'] for i in range(batch_size)], 0), 'u': torch.cat([batch_data[i]['u'] for i in range(batch_size)], 0), 'cost': torch.cat([batch_data[i]['cost'] for i in range(batch_size)], 0)}
+        if center:
+            batch['u'] = batch['u'] - batch['u'].sum(1)[:, None]/(length*length)
+        dataset.append(batch)
+    save_data(dataset, name)
 
 def resize_tensor(data, size, filename = None):
     """

@@ -128,11 +128,17 @@ def compare_iterations(
                             data,
                             inits,
                             names,
-                            acc = 'WS',
+                            accs = ['WS','marg'],
                             max_iter = 25,
                             eps = 0.24,
                             min_start = None,
-                            max_start = None
+                            max_start = None,
+                            plot = True,
+                            returns = True,
+                            nb_samples = 20,
+                            conf = .95,
+                            timeit = False,
+                            nb_steps = 25
                         ):
     """
     Compares the accuracy of the sinkhorn function with different intializations for `v` for a varying number of iterations.
@@ -140,11 +146,18 @@ def compare_iterations(
     :param data: data used for computations. Either a dict with keys 'd1', 'd2', 'u' and 'cost' or a list of such dicts in which case they are concatenated.
     :param inits: list of initialization schemes. Takes functions that compute the first dual variable of the OT problem. If one is None, the default initialization is used instead.
     :param names: names of initialization schemes.
-    :param acc: specifies how accuracy is computed. If set to 'WS' computes the average L1 error on the Wasserstein distance. If set to 'marg' computes the marginal constraint violations.
+    :param accs: List containing specified accuracies. If it contains 'WS' computes the average L1 error on the Wasserstein distance. If if contains 'marg' computes the marginal constraint violations.
     :param max_iter: maximum number of iterations.
     :param eps: regularizer.
     :param min_start: sets all values in Sinkhorn initialization smaller than `min_start` to `min_start`.
     :param max_start: sets all values in Sinkhorn initialization larger than `max_start` to `max_start`.
+    :param plot: boolean, controls whether or not to plot the results.
+    :param returns: boolean, controls whether or not to return results in the end.
+    :param nb_samples: number of subsets to split data into.
+    :param conf: confidence for confidence intervals.
+    :param timeit: if True, collects data on time needed for calculations.
+    :param nb_steps: number of steps between 0 and `max_iter` data is collected at.
+    :param k: if given, this is a constant added to both distributions before computations to remove zeros from the data.
     """
     if type(data) == list:
         data_dict = {'d1': None, 'd2': None, 'u': None, 'cost': None}
@@ -152,32 +165,50 @@ def compare_iterations(
             data_dict[key] = torch.cat([data[i][key] for i in range(len(data))])
     else:
         data_dict = data
-    iters = [int(i*max_iter/25) + 1 for i in range(25)]
-    errs = [[] for i in range(len(inits))]
+    iters = [int(i*max_iter/nb_steps) + 1 for i in range(nb_steps)]
+    errs = {acc: [[[] for j in range(nb_samples)] for i in range(len(inits))] for acc in accs}
+    if timeit:
+        times = [[[] for j in range(nb_samples)] for i in range(len(inits))]
     l = int(math.sqrt(data_dict['d1'].size(1)))
     c = euclidean_cost_matrix(l, l, 2, True)
-    for i in range(25):
+    n = data_dict['d1'].size(0)//nb_samples
+    for i in tqdm(range(nb_steps)):
         for j in range(len(inits)):
-            if acc == 'marg':
+            for k in range(nb_samples):
                 if inits[j] == None:
-                    err = sinkhorn(data_dict['d1'], data_dict['d2'], c, eps, max_iter=iters[i], log=True, max_start=max_start, min_start=min_start)['average marginal constraint violation'].item()
+                    t1 = time.time()
+                    log = sinkhorn(data_dict['d1'][k*n:(k+1)*n], data_dict['d2'][k*n:(k+1)*n], c, eps, max_iter=iters[i], log=True, max_start=max_start, min_start=min_start)
+                    t2 = time.time() - t1
                 else:
-                    err = sinkhorn(data_dict['d1'], data_dict['d2'], c, eps, max_iter=iters[i], start=torch.exp(compute_c_transform(c, inits[j](torch.cat((data_dict['d1'], data_dict['d2']), 1)))/eps), log=True, max_start=max_start, min_start=min_start)['average marginal constraint violation'].item()
-            elif acc == 'WS':
-                if inits[j] == None:
-                    cost = sinkhorn(data_dict['d1'], data_dict['d2'], c, eps, max_iter=iters[i], max_start=max_start, min_start=min_start)
-                else:
-                    cost = sinkhorn(data_dict['d1'], data_dict['d2'], c, eps, max_iter=iters[i], start=torch.exp(compute_c_transform(c, inits[j](torch.cat((data_dict['d1'], data_dict['d2']), 1)))/eps), max_start=max_start, min_start=min_start)
-                err = ((cost - data_dict['cost'].view(-1)).abs().sum()/cost.size(0)).item()
-            else:
-                raise ValueError('Not a valid `acc` type! Try `WS` for the L1 error on the Wasserstein distance or `marg` for the average marginal constraint violation.')
-            errs[j].append(err)
-    for j in range(len(inits)):
-        plt.plot(iters, errs[j], label = names[j])
-    plt.xlabel('Iterations')
-    plt.ylabel('Error on Wasserstein distance')
-    plt.legend()
-    plt.show()
+                    t1 = time.time()
+                    log = sinkhorn(data_dict['d1'][k*n:(k+1)*n], data_dict['d2'][k*n:(k+1)*n], c, eps, max_iter=iters[i], start=torch.exp(compute_c_transform(c, inits[j](torch.cat((data_dict['d1'][k*n:(k+1)*n], data_dict['d2'][k*n:(k+1)*n]), 1)).detach())/eps), log=True, max_start=max_start, min_start=min_start)
+                    t2 = time.time() - t1
+                if 'marg' in accs:
+                    err = log['average marginal constraint violation'].item()
+                    errs['marg'][j][k].append(err)
+                if 'WS' in accs:
+                    cost = log['cost']
+                    cost_diff = cost - data_dict['cost'][k*n:(k+1)*n].view(-1)
+                    nb_nan = cost_diff.isnan().sum()
+                    cost_diff = torch.where(cost_diff.isnan(), torch.tensor(0).to(cost_diff.dtype), cost_diff)
+                    if nb_nan/len(cost_diff) > .1:
+                        perc = '%.2f'%(100*nb_nan/len(cost_diff))
+                        print(f'Warning! {perc}% of costs are NaN.')
+                    err = (cost_diff.abs().sum()/(len(cost_diff) - nb_nan)).item()
+                    errs['WS'][j][k].append(err)
+                if timeit:
+                    times[j][k].append(t2)
+    for i in range(len(inits)):
+        for acc in accs:
+            errs[acc][i] = compute_mean_conf(errs[acc][i], conf)
+        if timeit:
+            times[i] = compute_mean_conf(times[i], conf)
+    if plot:
+        plot_conf(iters, errs, names, 'Sinkhorn iterations', 'L1 error on Wasserstein distance')
+    if returns:
+        if timeit:
+            return (errs, times)
+        return errs
 
 def compare_time(
                     data,
