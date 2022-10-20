@@ -15,6 +15,9 @@ def loss_max_ws(t, t2):
     """
     A simple loss function that can be fed to `learn_ws` to learn the WS by simple gradient ascent on the WS computed
     from the potential instead of using a loss of that guess and the ground truth.
+    :param t: tensor.
+    :param t2: tensor.
+    :return: one-element tensor.
     """
     return -t.sum()
 
@@ -88,6 +91,7 @@ class DualApproximator:
         :param num_tests: number of times test data is collected if `verbose` >= 2.
         :param test_data: list of test data used for testing if verbose is True. Can contain various test data sets. If only one test data set is given, it needs to be nested into a 1-element list.
         :param WS_perf: if True, also collects performance on Wasserstein distance calculation in addition to potential approximation.
+        :return: dict with key 'pot', and also 'WS' if `WS_perf`==True. At each key is a list containing a list for each test dataset in `test_data`. Each list contains information on the respective error (MSE on potential resp. L1 on Wasserstein distance) over the course of learning.
         """
         if test_data == None: # we oftentimes have a variable 'testdata' predefined.
             try:
@@ -164,6 +168,7 @@ class DualApproximator:
         :param conf: confidence for the confidence interval.
         :param save_models: optional boolean. If True, saves all trained networks after their training finished.
         :param model_name: file name of saved models. Models will be saved as `name`_0.pt to `name`_(`nb_runs`-1).pt.
+        :return: if WS_perf==True, returns (results, WS_results), otherwise results. For each test set in test_data, results contains a 3-tuple computed by `compute_mean_conf` which captures the average MSE error on the potential over the course of learning. WS_results is similar, but for the L1 error on the Wasserstein distance.
         """
         test_nb = len(test_data)
         results = [[] for i in range(test_nb)]
@@ -191,6 +196,8 @@ class DualApproximator:
         """
         A helper function that runs multiple sets of test data through a `test_function`.
         :param testdata: list containing test data.
+        :param test_function: function used for testing data. Should be `self.test_potential` or `self.test_ws`.
+        :return: a list containing the return values of `test_function` for each of the test sets in `testdata`.
         """
         results = []
         for d in testdata:
@@ -218,6 +225,7 @@ class DualApproximator:
         :param num_tests: number of times test data is collected if `verbose` >= 2.
         :param test_data: test data used for testing if verbose is True.
         :param WS_perf: if True, also collects performance information on Wasserstein distance approximation in addition to potential approximation.
+        :return: dict with key 'pot', and also 'WS' if `WS_perf`==True. At each key is a list containing a list for each test dataset in `test_data`. Each list contains information on the respective error (MSE on potential resp. L1 on Wasserstein distance) over the course of learning.
         """
         if test_data == None: # we oftentimes have a variable 'testdata' predefined.
             try:
@@ -305,6 +313,7 @@ class DualApproximator:
         :param WS_perf: if True, also collects performance data on the WS distance approximation.
         :param save_points: optional list containing tuples indicating the points where the network will be saved. First entry indicates meta epoch, second indicates file number.
         :param save_name: file name for saving networks. Will be saved as `save_name`_`i`_`j`.pt where `i` is the meta epoch and `j` the file name number.
+        :return: dict with key 'pot', and also 'WS' if `WS_perf`==True. At each key is a list containing a list for each test dataset in `test_data`. Each list contains information on the respective error (MSE on potential resp. L1 on Wasserstein distance) over the course of learning.
         """
         if save_points == None:
             save_points = []
@@ -341,6 +350,7 @@ class DualApproximator:
     def predict(self, a, b):
         """
         Concatenates input distributions `a` and `b` to compute the network's output.
+        :return: `self.net` evaluated at `a` and `b`.
         """
         self.net.eval()
         with torch.no_grad():
@@ -350,8 +360,9 @@ class DualApproximator:
 
     def test_potential(self, data, loss_function = F.mse_loss):
         '''
-        Tests the network on test data 'data' which should be constructed from 'generate_simple_data' with 'n_samples'=='batchsize'.
-        Returns the average `loss_function` error on the dual potential.
+        Tests the network on test data 'data'.
+        :param data: data used for testing. Should be a list with each item being a dictionary with keys `d1`, `d2` and `u` which contain the two distributions and the dual potential as two-dimensional tensors.
+        :return: average `loss_function` error on the dual potential.
         '''
         self.net.eval()
         l = 0
@@ -364,10 +375,12 @@ class DualApproximator:
 
     def test_ws(self, data, loss_function = F.mse_loss, rel = False, return_ws = False):
         '''
-        Tests the network on test data 'data' which should be a list with dict entries of the format produced by 'generate_simple_data' or 'generate_structured_data'.
-        Returns the average `loss_function` error on the squared Wasserstein-2 distance (i.e. the OT cost).
+        Tests the network on test data 'data'.
+        :param data: data used for testing. Should be a list with each item being a dictionary with keys `d1`, `d2` and `u` which contain the two distributions and the dual potential as two-dimensional tensors.
+        :param loss_function: loss function.
         :param rel: if True, returns the relative error, computed as `[\sum (a_i-b_i)^z]/[\sum b_i^z]`, where a is the prediction and b the ground truth.
-        :param return_ws: if True, returns the approximated WS distances alongside the ground truth.
+        :param return_ws: if True, additionally returns the approximated WS distances and the ground truth.
+        :return: average `loss_function` error on the squared Wasserstein-2 distance (i.e. the OT cost). If `return_ws`==True, at second position also returns a list containing 2-tuples, where the first entry corresponds to the estimated Wasserstein distance and the second entry to the ground truth.
         '''
         self.net.eval()
         l = 0

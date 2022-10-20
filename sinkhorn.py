@@ -13,8 +13,8 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 def sinkhorn(
-                mu,
-                nu,
+                d1,
+                d2,
                 C,
                 eps,
                 max_iter = 100,
@@ -28,8 +28,8 @@ def sinkhorn(
             ):
     """
     Sinkhorn's algorithm to compute the dual potentials and the dual problem value. Allows for parallelization.
-    :param mu: first distribution. Two-dimensional tensor where first dimension corresponds to number of samples and second dimension to sample size. Can also be 1D for a single sample.
-    :param nu: second distribution. Two-dimensional tensor as above.
+    :param d1: first distribution. Two-dimensional tensor where first dimension corresponds to number of samples and second dimension to sample size. Can also be 1D for a single sample.
+    :param d2: second distribution. Two-dimensional tensor as above.
     :param C: cost matrix. Two-dimensional tensor.
     :param eps: regularizer.
     :param max_iter: maximum number of iterations.
@@ -40,7 +40,10 @@ def sinkhorn(
     :param verbose: if False, turns off all print statements.
     :param min_start: if given, sets all entries in the starting vector smaller than `min_start` equal to `min_start`.
     :param max_start: if given, sets all entries in the starting vector larger than `max_start` equal to `max_start`.
+    :return: If log==False: transport costs. Else: A dict with keys 'cost' (transport costs), 'plan' (transport plans), 'iterations' (number of iterations), 'u' (first dual potential, NOT the scaling vector), 'v' (second dual potential, NOT the scaling vector), 'average marginal constraint violation'.
     """
+    mu = d1.clone()
+    nu = d2.clone()
     if mu.dim() == 1:
         mu = mu[None, :]
     if nu.dim() == 1:
@@ -79,25 +82,40 @@ def sinkhorn(
     else:
         mu_star = torch.matmul(gamma, torch.ones(u.size(0)).to(tens_type).to(device))
         nu_star = torch.matmul(torch.ones(u.size(0)).to(tens_type).to(device), gamma)
-        mu_err = (mu.T - mu_star).abs().sum(1)
-        nu_err = (nu.T - nu_star).abs().sum(1)
-        mu_err = mu_err.sum()/mu_err.size(0)
-        nu_err = nu_err.sum()/nu_err.size(0)
+
+        mu_err = (d1.T - mu_star).abs().sum(1)
+        mu_nan = mu_err.isnan().sum()
+        mu_err = torch.where(mu_err.isnan(), torch.tensor(0).to(tens_type), mu_err)
+
+        nu_err = (d2.T - nu_star).abs().sum(1)
+        nu_nan = nu_err.isnan().sum()
+        nu_err = torch.where(nu_err.isnan(), torch.tensor(0).to(tens_type), nu_err)
+
+        if mu_nan/mu_err.size(0) > 0.1 or nu_nan/nu_err.size(0) > 0.1:
+            perc1 = '%.2f'%(100*mu_nan/mu_err.size(0))
+            perc2 = '%.2f'%(100*nu_nan/nu_err.size(0))
+            if verbose:
+                print(f'Warning! {perc1}% and {perc2}% of marginal constraint violations are NaN.')
+
+        mu_err = mu_err.sum()/(mu_err.size(0) - mu_nan)
+        nu_err = nu_err.sum()/(nu_err.size(0) - nu_nan)
         return {'cost': cost, 'plan': gamma, 'iterations': it, 'u': eps * torch.log(u).T, 'v': eps * torch.log(v).T, 'average marginal constraint violation': (mu_err + nu_err)/2}
 
 def average_accuracy(
                         data,
                         init,
                         nb_iters,
-                        loss_f = F.l1_loss,
                         eps = .24,
                         min_start = None,
                         max_start = None,
-                        conf = .95
+                        conf = .95,
+                        nb_samples = 20
                     ):
     """
     Computes the average accuracy of the Sinkhorn algorithm for a fixed number of iterations using an initialization specified by `init` on a batch of `data`.
-    Splits `data` into ten subsets and computes the mean performance and a `conf` confidence interval.
+    Splits `data` into `nb_samples` subsets and computes the mean performance and a `conf` confidence interval.
+    Can also take as `init` a `DualApproximator` object, in which case this object is used to approximate the OT distance directly, without Sinkhorn.
+    NOTE: if the `DualApproximator`'s `net` attribute is passed instead, this is considered to be an initialization for the Sinkhorn algorithm.
     Accuracy measured in terms of `loss_f` error on the Wasserstein distance.
     :param data: data used for computation. Either a dict with keys 'd1', 'd2', 'u' and 'cost' or a list of such dicts in which case they are concatenated.
     :param init: initialization scheme. Takes functions that compute the first dual variable of the OT problem. If None, the default initialization is used instead.
@@ -106,6 +124,9 @@ def average_accuracy(
     :param eps: regularizer used for Sinkhorn algorithm.
     :param min_start: sets all values in Sinkhorn initialization smaller than `min_start` to `min_start`.
     :param max_start: sets all values in Sinkhorn initialization larger than `max_start` to `max_start`.
+    :param conf: confidence for the confidence interval.
+    :param nb_samples: number of subsets to split data into.
+    :return: 3-tuple, where the first and last entry correspond to the lower and upper bounds on the confidence interval and the second one to the mean.
     """
     if type(data) == list:
         d = {'d1': None, 'd2': None, 'u': None, 'cost': None}
@@ -115,13 +136,28 @@ def average_accuracy(
         d = data
     l = int(math.sqrt(d['d1'].size(1)))
     c = euclidean_cost_matrix(l, l, 2, True)
-    for i in tqdm(range(10)):
+    n = d['d1'].size(0)//nb_samples
+    diffs = torch.zeros(nb_samples)
+    for i in tqdm(range(nb_samples)):
         if init == None:
-            cost = sinkhorn(d['d1'], d['d2'], c, eps, max_iter=nb_iters, max_start=max_start, min_start=min_start)
+            cost = sinkhorn(d['d1'][i*n:(i+1)*n], d['d2'][i*n:(i+1)*n], c, eps, max_iter=nb_iters, max_start=max_start, min_start=min_start)
+        elif isinstance(init, DualApproximator): # in this case, not the Sinkhorn algorithm's accuracy is computed, but the DualApproximator's one.
+            f = init.net(torch.cat((d['d1'][i*n:(i+1)*n], d['d2'][i*n:(i+1)*n]), 1)).detach()
+            g = compute_c_transform(c, f)
+            cost = compute_dual(d['d1'][i*n:(i+1)*n], d['d2'][i*n:(i+1)*n], f, g).view(-1)
         else:
-            c_transform = compute_c_transform(c, init(torch.cat((d['d1'], d['d2']), 1)))
-            cost = sinkhorn(d['d1'], d['d2'], c, eps, max_iter=nb_iters, start=torch.exp(c_transform/eps), max_start=max_start, min_start=min_start)
-    return loss_f(cost, d['cost'].view(-1))
+            c_transform = compute_c_transform(c, init(torch.cat((d['d1'][i*n:(i+1)*n], d['d2'][i*n:(i+1)*n]), 1)).detach())
+            cost = sinkhorn(d['d1'][i*n:(i+1)*n], d['d2'][i*n:(i+1)*n], c, eps, max_iter=nb_iters, start=torch.exp(c_transform/eps), max_start=max_start, min_start=min_start)
+
+        cost_diff = cost - d['cost'][i*n:(i+1)*n].view(-1)
+        nb_nan = cost_diff.isnan().sum()
+        cost_diff = torch.where(cost_diff.isnan(), torch.tensor(0).to(cost_diff.dtype), cost_diff)
+        if nb_nan/len(cost_diff) > .1:
+            perc = '%.2f'%(100*nb_nan/len(cost_diff))
+            print(f'Warning! {perc}% of costs are NaN.')
+        diffs[i] = (cost_diff.abs().sum()/(len(cost_diff) - nb_nan)).item()
+    conf_interval = compute_mean_conf(diffs, conf)
+    return conf_interval
 
 
 def compare_iterations(
@@ -157,7 +193,7 @@ def compare_iterations(
     :param conf: confidence for confidence intervals.
     :param timeit: if True, collects data on time needed for calculations.
     :param nb_steps: number of steps between 0 and `max_iter` data is collected at.
-    :param k: if given, this is a constant added to both distributions before computations to remove zeros from the data.
+    :return: Either `errs` or, if timeit==True, a tuple (`errs`, `times`). `errs` is a dict with keys 'WS' and 'marg', which contain the Wasserstein and marginal constraint errors, resp.; `times` contains the recorded times. In each location (`errs`['WS'], `errs`['marg'], `times`) is a list with one element per initialization scheme in `inits`. Each such element is a 3-tuple, where the first and last entry correspond to the lower resp. upper bound on the confidence interval and the second one to the mean.
     """
     if type(data) == list:
         data_dict = {'d1': None, 'd2': None, 'u': None, 'cost': None}
@@ -383,6 +419,7 @@ def log_sinkhorn(
     :param start: first iteration's starting vector. If None, this is set to ones.
     :param log: if True, returns the optimal plan and dual potentials alongside the cost; otherwise, returns only the cost.
     :param tens_type: determines the dtype of all tensors involved in computations. Defaults to float64 as this allows for greater accuracy.
+    :return: if log==False: the transport cost. Else: a dict with keys 'cost' (transport cost), 'plan' (transport plan), 'u' and 'v' (dual potentials).
     """
     if mu.dim() == 2:
         mu = mu.view(-1)
