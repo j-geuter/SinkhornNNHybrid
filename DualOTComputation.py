@@ -114,6 +114,8 @@ class DualApproximator:
                 for j in range(test_nb):
                     performance['WS'][j].append(self.test_ws(test_data[j]))
         self.net.train()
+        if verbose >=2 and (dataset['d1'].size(0)//(num_tests * batchsize)) == 0:
+            verbose = 1
         for e in range(epochs):
             perm = torch.randperm(dataset['d1'].size(0))
             for key in dataset.keys():
@@ -176,6 +178,7 @@ class DualApproximator:
             WS_results = [[] for i in range(test_nb)]
         for i in range(nb_runs):
             self.reset_params()
+            print(f'Processing model {i+1} of {nb_runs}.')
             perf = learn_function(data_filename=data, loss_function=loss, num_tests=num_tests, test_data=test_data, verbose=2, WS_perf = WS_perf)
             if save_models:
                 self.save(f'{model_name}_{i}.pt')
@@ -248,6 +251,8 @@ class DualApproximator:
                 for j in range(test_nb):
                     performance['WS'][j].append(self.test_ws(test_data[j]))
         self.net.train()
+        if verbose >=2 and (dataset['d1'].size(0)//(num_tests * batchsize)) == 0:
+            verbose = 1
         for e in range(epochs):
             perm = torch.randperm(dataset['d1'].size(0))
             for key in dataset.keys():

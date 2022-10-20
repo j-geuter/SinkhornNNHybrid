@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from tqdm import tqdm
 
 from datacreation import euclidean_cost_matrix
-from utils import compute_c_transform
+from utils import compute_c_transform, compute_mean_conf, compute_dual, plot_conf
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -83,11 +83,11 @@ def sinkhorn(
         mu_star = torch.matmul(gamma, torch.ones(u.size(0)).to(tens_type).to(device))
         nu_star = torch.matmul(torch.ones(u.size(0)).to(tens_type).to(device), gamma)
 
-        mu_err = (d1.T - mu_star).abs().sum(1)
+        mu_err = (mu.T - mu_star).abs().sum(1)
         mu_nan = mu_err.isnan().sum()
         mu_err = torch.where(mu_err.isnan(), torch.tensor(0).to(tens_type), mu_err)
 
-        nu_err = (d2.T - nu_star).abs().sum(1)
+        nu_err = (nu.T - nu_star).abs().sum(1)
         nu_nan = nu_err.isnan().sum()
         nu_err = torch.where(nu_err.isnan(), torch.tensor(0).to(tens_type), nu_err)
 

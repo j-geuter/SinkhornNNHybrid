@@ -122,7 +122,12 @@ def plot(
             x = None,
             labels = None,
             x_label = '',
-            y_label = ''
+            y_label = '',
+            titles = None,
+            separate_plots = None,
+            rows = None,
+            columns = None,
+            slice = None
         ):
     """
     Plots data.
@@ -131,20 +136,64 @@ def plot(
     :param labels: List of labels for each list in y.
     :param x_label: String. Label on the x-axis.
     :param y_label: String. Label on the y-axis.
+    :param titles: optional titles for each plot.
+    :param separate_plots: optional parameter to split data into separate plots. If given, this should be a list of lists, each tuple containing the data indices for a plot.
+    :param rows: number of rows for subplots. If None, all subplots will be in one row.
+    :param columns: number of columns for subplots.
+    :param slice: optional parameter with which one can determine a slice of each element in y to be used instead. If given, this is a tuple of two ints indicating the slice.
     :return: None.
     """
     if x == None:
-        x = [[i for i in range(len(y[0]))]]
-    if len(x) == 1:
-        x = [x[0] for i in range(len(y))]
-    if labels == None:
-        labels = ['Abs. error on WS distance', 'Rel. error on WS distance', 'L2 error on potential']
-    for i in range(len(y)):
-        plt.plot(x[i], y[i], label=labels[i])
-    plt.xlabel(x_label)
-    plt.ylabel(y_label)
-    plt.legend()
-    plt.show()
+        x = [i for i in range(len(y[0]))]
+    elif isinstance(x, int):
+        x = [i*x/(len(y[0])-1) for i in range(len(y[0]))]
+    if not isinstance(x[0], list): # if x is just a single list, it needs to be cast to contain one list for each item in y.
+        x = [x for i in range(len(y))]
+    if slice != None:
+        for i in range(len(y)):
+            x[i] = x[i][slice[0]:slice[1]]
+            y[i] = y[i][slice[0]:slice[1]]
+    if separate_plots == None:
+        for i in range(len(y)):
+            if labels != None:
+                plt.plot(x[i], y[i], label=labels[i])
+            else:
+                plt.plot(x[i], y[i])
+        plt.xlabel(x_label)
+        plt.ylabel(y_label)
+        plt.legend()
+        plt.show()
+    else:
+        nb_plots = len(separate_plots)
+        if rows == None:
+            rows = 1
+            columns = nb_plots
+        fig, axes = plt.subplots(rows, columns, sharex='col', figsize=(8,8))
+        if rows == 1:
+            axes = [axes]
+        if columns == 1:
+            axes = [[ax] for ax in axes]
+        if titles:
+            titles = iter(titles)
+        for r in range(rows):
+            for i, ax in enumerate(axes[r]):
+                colors = iter(plt.cm.rainbow(np.linspace(0, 1, len(separate_plots[r*columns+i]))))
+                for j in separate_plots[r*columns+i]:
+                    color = next(colors)
+                    if labels != None:
+                        ax.plot(x[i], y[j], label=labels[j], color=color)
+                    else:
+                        ax.plot(x[i], y[j], color=color)
+                ax.set_ylim(bottom=0)
+                if r == rows-1:
+                    ax.set_xlabel(x_label)
+                if i == 0:
+                    ax.set_ylabel(y_label)
+                if titles:
+                    ax.set_title(next(titles))
+                if labels != None:
+                    ax.legend()
+        fig.show()
 
 
 def plot_conf(
@@ -166,7 +215,7 @@ def plot_conf(
     :param x_label: label for x axis.
     :param y_label: label for y axis.
     :param titles: optional titles for each plot.
-    :param separate_plots: optional parameter to split data into separate plots. If given, this should be a list of tuples, each tuple containing the data indices for a plot.
+    :param separate_plots: optional parameter to split data into separate plots. If given, this should be a list of lists, each tuple containing the data indices for a plot.
     :param rows: number of rows for subplots. If None, all subplots will be in one row.
     :param columns: number of columns for subplots.
     :return: None.
