@@ -240,7 +240,11 @@ def compare_iterations(
         if timeit:
             times[i] = compute_mean_conf(times[i], conf)
     if plot:
-        plot_conf(iters, errs, names, 'Sinkhorn iterations', 'L1 error on Wasserstein distance')
+        for acc in accs:
+            if acc == 'WS':
+                plot_conf(iters, errs['WS'], names, 'Sinkhorn iterations', 'L1 error on Wasserstein distance')
+            elif acc == 'marg':
+                plot_conf(iters, errs['marg'], names, 'Sinkhorn iterations', 'Average marginal constraint violation')
     if returns:
         if timeit:
             return (errs, times)

@@ -74,7 +74,7 @@ sinkhorn(testdata[0]['d1'][:5], testdata[0]['d2'][:5], c, eps, max_iter=1000, lo
 input = d.net(torch.cat((testdata[0]['d1'][:5], testdata[0]['d2'][:5]), 1))
 input = torch.exp(input)/eps
 sinkhorn(testdata[0]['d1'][:5], testdata[0]['d2'][:5], c, eps, max_iter=500, start=input, min_start=1e-35, max_start=1e35) # uses network's prediction for initialization
-compare_iterations(testdata[0], [d.net, None], ['network', 'default'], max_iter=500, eps=eps, min_start=1e-35, max_start=1e35) # plots accuracy for default and network initialization
+compare_iterations(testdata[0], [d.net, None], ['network', 'default'], accs=['WS'], max_iter=500, eps=eps, min_start=1e-35, max_start=1e35) # plots accuracy for default and network initialization
                                                                                                                                # w.r.t. the number of iterations
 ```
 
@@ -97,7 +97,7 @@ c = euclidean_cost_matrix(28, 28, 2, True)
 g = compute_c_transform(c, f)
 f = compute_c_transform(c, g) # sets f to its double-c-transform. Can also be achieved directly by setting d.net.doubletransform=True
 dual_approx = compute_dual(testdata[0]['d1'][:20], testdata[0]['d2'][:20], f, g)
-print((dual_approx - testdata[0]['cost'][:20].view(-1)).abs().sum()/20) # average error on the dual OT problem value
+print((dual_approx - testdata[0]['cost'][:20]).abs().mean()) # average error on the dual OT problem value
 ```
 
 ### networks

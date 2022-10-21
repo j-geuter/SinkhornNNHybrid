@@ -142,7 +142,8 @@ class DualApproximator:
                         performance['WS'][j].append(self.test_ws(test_data[j]))
                 for j in range(test_nb):
                     performance['pot'][j].append(self.test_potential(test_data[j]))
-        return performance
+        if verbose >= 1:
+            return performance
 
     def average_performance(
                                 self,
@@ -281,7 +282,8 @@ class DualApproximator:
                         performance['WS'][j].append(self.test_ws(test_data[j]))
                 for j in range(test_nb):
                     performance['pot'][j].append(self.test_potential(test_data[j]))
-        return performance
+        if verbose >= 1:
+            return performance
 
     def learn_multiple_files(
                                 self,
