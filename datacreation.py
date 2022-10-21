@@ -11,6 +11,8 @@ import random
 import pickle
 import os
 
+from costmatrix import euclidean_cost_matrix
+from sinkhorn import sinkhorn
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -216,28 +218,6 @@ def resize_file(from_file, to_file, size, center = True):
         new_data.append(new_batch)
     save_data(new_data, to_file)
 
-def euclidean_cost_matrix(height, width, exponent = 2, tens = False):
-    """
-    computes a 2-dimensional C-order numpy array corresponding to a Euclidean distance cost matrix for distributions of size width*height.
-    :param width: width of the distributions.
-    :param height: height of the distributions.
-    :param exponent: exponent of the Euclidean distance. Defaults to 2, i.e. returning the squared Euclidean distance.
-    :param tens: if True, returns a tensor object instead.
-    """
-    n = width*height
-    M = np.zeros([n, n], dtype=np.float32)#was np.float64. Is np.float32 more consistent?
-    for a in range(n):
-        for b in range(n):
-            ax = a // width
-            ay = a % width
-            bx = b // width
-            by = b % width
-            eucl = math.sqrt((ax - bx)**2 + (ay - by)**2)
-            M[a][b] = eucl**exponent
-    if tens:
-        return torch.tensor(M, dtype=torch.float64).to(device)
-    return M
-
 def generate_simple_data(
                             file_name,
                             length = 2,
@@ -247,12 +227,14 @@ def generate_simple_data(
                             center = True,
                             remove_zeros = True,
                             mult = 1,
-                            sinkhorn = False,
+                            sink = False,
+                            iters = 1000,
                             eps = 0.4
                         ):
     """
     Generates a dataset of 'n_samples' distributions of size 'length'*'length', their OT cost using the euclidean distance with exponent 'cost_exp' (meaning for default 2, we get
     the squared Wasserstein-2-distance), and their two dual variables. Saves dataset in a file.
+    NOTE: If sink==True, all samples resulting in NaN will be removed, possibly resulting in less than `n_samples` samples in the end.
     :param file_name: name of the file to save dataset in.
     :param length: width/height of data samples.
     :param n_samples: total number of samples created.
@@ -261,31 +243,40 @@ def generate_simple_data(
     :param center: if True, centers all dual potentials such that each sums to zero.
     :param remove_zeros: if True, removes zeros in data (which are unlikely to occur anyways).
     :param mult: number of times samples are multiplied by themselves, leading to more sparse samples with greater Wasserstein distances.
-    :param sinkhorn: if True, generates data using the Sinkhorn algorithm.
+    :param sink: if True, generates data using the Sinkhorn algorithm.
+    :param iters: number of iterations for Sinkhorn algorithm.
     :param eps: regularizer for Sinkhorn algorithm.
     """
     dataset = []
     dist_dim = length*length
-    cost_matrix = euclidean_cost_matrix(length, length, cost_exp)
+    cost_matrix = euclidean_cost_matrix(length, length, cost_exp, True)
     for i in tqdm(range(n_samples//batchsize)):
         data = []
-        for j in range(batchsize):
-            a, b = np.random.random(dist_dim), np.random.random(dist_dim)
-            for l in range(mult):
-                a *= a
-                b *= b
-            if remove_zeros:
-                a += 1e-3*np.ones(len(a))
-                b += 1e-3*np.ones(len(b))
-            a /= sum(a)
-            b /= sum(b)
-            if not sinkhorn:
-                log = ot.emd(a, b, cost_matrix, log=True)
-            else:
-                log = ot.sinkhorn2(a, b, cost_matrix, eps, log=True)
-                log[1]['cost'] = log[0]
-            data.append({'d1': torch.tensor(a, dtype=torch.float)[None,:].to(device), 'd2': torch.tensor(b, dtype=torch.float)[None,:].to(device), 'u': torch.tensor(log[1]['u'], dtype=torch.float)[None,:].to(device), 'cost': torch.tensor([log[1]['cost']], dtype=torch.float)[None,:].to(device)})
-        batch = {'d1': torch.cat([data[i]['d1'] for i in range(batchsize)], 0), 'd2': torch.cat([data[i]['d2'] for i in range(batchsize)], 0), 'u': torch.cat([data[i]['u'] for i in range(batchsize)], 0), 'cost': torch.cat([data[i]['cost'] for i in range(batchsize)], 0)}
+        a, b = torch.rand(batchsize, dist_dim).to(torch.float64).to(device), torch.rand(batchsize, dist_dim).to(torch.float64).to(device)
+        a = a**mult
+        b = b**mult
+        if remove_zeros:
+            a += 1e-3*torch.ones(a.size())
+            b += 1e-3*torch.ones(b.size())
+        a /= a.sum(1)[:, None]
+        b /= b.sum(1)[:, None]
+        if not sink:
+            log = ot.emd(a[0], b[0], cost_matrix, log=True)
+            log[1]['u'] = log[1]['u'][None, :].to(device)
+            log[1]['cost'] = torch.tensor([[log[1]['cost']]]).to(device)
+            for k in range(1, batchsize):
+                curr_log = ot.emd(a[k], b[k], cost_matrix, log=True)
+                log[1]['u'] = torch.cat((log[1]['u'], curr_log[1]['u'][None, :].to(device)), 0)
+                log[1]['cost'] = torch.cat((log[1]['cost'], torch.tensor([[curr_log[1]['cost']]]).to(device)), 0)
+        else:
+            log = (0, sinkhorn(a, b, cost_matrix, eps, max_iter=iters, log=True)) # cast to tuple s.t. this has the same format as the `ot.emd` output.
+            log[1]['cost'] = log[1]['cost'][:, None]
+            idx = torch.tensor([k for k in range(batchsize) if not torch.any(log[1]['u'][k].isnan()) and not log[1]['cost'][k].isnan()]).to(torch.int64).to(device)
+            log[1]['u'] = log[1]['u'].index_select(0, idx)
+            log[1]['cost'] = log[1]['cost'].index_select(0, idx)
+            a = a.index_select(0, idx)
+            b = b.index_select(0, idx)
+        batch = {'d1': a.to(torch.float), 'd2': b.to(torch.float), 'u': log[1]['u'].to(torch.float), 'cost': log[1]['cost'].to(torch.float)}
         if center:
             batch['u'] = batch['u'] - batch['u'].sum(1)[:, None]/dist_dim
         dataset.append(batch)

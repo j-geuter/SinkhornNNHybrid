@@ -3,7 +3,7 @@ import torch.nn as nn
 import math
 
 from utils import compute_c_transform
-from datacreation import euclidean_cost_matrix
+from costmatrix import euclidean_cost_matrix
 
 
 class FCNN(nn.Module):

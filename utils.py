@@ -6,7 +6,7 @@ import torch
 import numpy as np
 from scipy.stats import t as t_scipy
 
-from datacreation import euclidean_cost_matrix
+from costmatrix import euclidean_cost_matrix
 
 SMALL = 8
 MEDIUM = 12

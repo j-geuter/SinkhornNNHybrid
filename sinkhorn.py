@@ -5,9 +5,8 @@ import time
 import torch.nn.functional as F
 from tqdm import tqdm
 
-from datacreation import euclidean_cost_matrix
 from utils import compute_c_transform, compute_mean_conf, compute_dual, plot_conf
-
+from costmatrix import euclidean_cost_matrix
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -42,22 +41,22 @@ def sinkhorn(
     :param max_start: if given, sets all entries in the starting vector larger than `max_start` equal to `max_start`.
     :return: If log==False: transport costs. Else: A dict with keys 'cost' (transport costs), 'plan' (transport plans), 'iterations' (number of iterations), 'u' (first dual potential, NOT the scaling vector), 'v' (second dual potential, NOT the scaling vector), 'average marginal constraint violation'.
     """
-    mu = d1.clone()
-    nu = d2.clone()
+    mu = d1.clone().to(device)
+    nu = d2.clone().to(device)
     if mu.dim() == 1:
         mu = mu[None, :]
     if nu.dim() == 1:
         nu = nu[None, :]
     if start == None:
-        start  = torch.ones(mu.size())
+        start  = torch.ones(mu.size()).to(device)
     start = start.detach()
     if max_start:
         start = torch.where(start<torch.tensor(max_start).to(start.dtype), start, torch.tensor(max_start).to(start.dtype))
     if min_start:
         start = torch.where(start>torch.tensor(min_start).to(start.dtype), start, torch.tensor(min_start).to(start.dtype))
-    mu = mu.T.to(tens_type).to(device)
-    nu = nu.T.to(tens_type).to(device)
-    start = start.T.to(tens_type).to(device)
+    mu = mu.T.to(tens_type)
+    nu = nu.T.to(tens_type)
+    start = start.T.to(tens_type)
     K = torch.exp(-C/eps).to(tens_type).to(device)
     v = start
     it = max_iter
@@ -85,11 +84,11 @@ def sinkhorn(
 
         mu_err = (mu.T - mu_star).abs().sum(1)
         mu_nan = mu_err.isnan().sum()
-        mu_err = torch.where(mu_err.isnan(), torch.tensor(0).to(tens_type), mu_err)
+        mu_err = torch.where(mu_err.isnan(), torch.tensor(0).to(tens_type).to(device), mu_err)
 
         nu_err = (nu.T - nu_star).abs().sum(1)
         nu_nan = nu_err.isnan().sum()
-        nu_err = torch.where(nu_err.isnan(), torch.tensor(0).to(tens_type), nu_err)
+        nu_err = torch.where(nu_err.isnan(), torch.tensor(0).to(tens_type).to(device), nu_err)
 
         if mu_nan/mu_err.size(0) > 0.1 or nu_nan/nu_err.size(0) > 0.1:
             perc1 = '%.2f'%(100*mu_nan/mu_err.size(0))

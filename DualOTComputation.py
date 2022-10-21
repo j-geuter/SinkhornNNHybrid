@@ -5,7 +5,8 @@ import torch.nn.functional as F
 import random
 
 from networks import FCNN
-from datacreation import load_data, euclidean_cost_matrix, data_to_list
+from costmatrix import euclidean_cost_matrix
+from datacreation import load_data, data_to_list
 from utils import compute_c_transform, compute_dual, compute_mean_conf
 
 
