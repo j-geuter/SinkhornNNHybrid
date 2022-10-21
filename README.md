@@ -1,24 +1,27 @@
 # SinkhornNNHybrid
 Welcome to the SinkhornNNHybrid repository! This repo provides the PyTorch implementation for the thesis 'A Sinkhorn-NN Hybrid Algorithm for Optimal
 Transport'.  
-The code is structured in five files, `DualOTComputation`, `networks`, `utils`, `sinkhorn` and `datacreation`. The main files you'll need reproduce the results from the thesis are `DualOTComputation` and `sinkhorn`, and `utils` contains some useful functions that let you visualize or plot data. To generate training and testing data first, you'll need the
-`datacreation` file.  
+The code is structured in six files, `DualOTComputation`, `networks`, `utils`, `sinkhorn`, `costmatrix` and `datacreation`. The main files you'll need reproduce the results from the thesis are `DualOTComputation` and `sinkhorn`, and `utils` contains some useful functions that let you visualize or plot data. To generate training and testing data first, you'll need the
+`datacreation` file. The `costmatrix` file contains a function to create cost matrices based on the Euclidean distance, and `networks` the neural network class; you won't need to actively use either of these files unless you want to define your own cost function or network structure, in which case it is easiest to alter the `euclidean_cost_matrix` function and the `FCNN` class therein.
 The `requirements.txt` file lists all dependencies and their versions.  
 Note: the project has not been tested for CUDA compatibility.
 
 ## Code Overview
-We will first have a quick look at the five files containing all code, before going over how to replicate the results from the thesis in the next section.
+We will first have a quick look at the six files containing all code, before going over how to replicate the results from the thesis in the next section.
+
+### costmatrix
+Euclidean distance cost matrices can be constructed using the `euclidean_cost_matrix` function which takes as input the two image dimensions and an 'exponent' parameter, which is usually set to $2$ corresponding to the squared Euclidean distance. A fourth boolean parameter `tens` lets you choose whether the matrix should be a `torch.tensor` object or a `numpy.array`. In most cases, you will call this function as `euclidean_cost_matrix(28, 28, 2, True)`.
 
 ### datacreation
 This file contains various functions that let you create and save datasets for training and testing. Usually, data `d` will come in the form of a list, where each item is a dictionary
 with keywords `d1` and `d2` denoting batches of distributions, `cost` denoting the respective transport costs, and `u` denoting the dual potentials. A sample corresponds to
 `(d['d1'][i], d['d1'][i], d['u'][i], d['cost'][i])`. The `load_data` and `save_data` functions are simple functions that let you open
 and save data files using `pickle`. Another important function in this file is `compute_c_transform` which lets you compute the $c$-transform of a potential `sample`. This function
-also needs as input the cost matrix `cost` and supports multiple samples at once. Euclidean distance cost matrices can be constructed using the `euclidean_cost_matrix` function which takes as input the two image dimensions and an 'exponent' parameter, which is usually set to $2$ corresponding to the squared Euclidean distance. A fourth boolean parameter `tens` lets you choose whether the matrix should be a `torch.tensor` object or a `numpy.array`. In most cases, you will call this function as `euclidean_cost_matrix(28, 28, 2, True)`.  
+also needs as input the cost matrix `cost` and supports multiple samples at once.   
 Most important for generating training data similar to the data used in the thesis is the
 `generate_simple_data` function, which takes as input a `file_name` which determines the location where the data set will be saved, the side length `length` of the distributions
 (e.g. $28$), number of samples in the file `n_samples` (note that setting `n_samples` too high might cause memory overload; a good approach is saving $100,000$ samples per file),
-and a keyword argument `mult` which corresponds to the parameter $k_1$ from the thesis. This function can also be used for randomly generated test data.
+and a keyword argument `mult` which corresponds to the parameter $k_1$ from the thesis. It is also possible to pass a keyword argument `sink=True` in order to use the Sinkhorn algorithm for sample generation instead. This function can also be used for randomly generated test data.
 To produce test data sets which are not random, but originate from data sets such as MNIST, use the `generate_dataset_data` function. It takes as input a `name` (location where
 the data will be saved), a parameter `n_files` which controls how many data sets will be generated (and can most often be set to $1$), and, importantly, a `dataloader` parameter
 which is a `torch.utils.data.DataLoader` object and can be wrapped around a `torchvision.datasets` data set such as `torchvision.datasets.MNIST`.  
