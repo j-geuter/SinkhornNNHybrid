@@ -48,12 +48,12 @@ def sinkhorn(
     if nu.dim() == 1:
         nu = nu[None, :]
     if start == None:
-        start  = torch.ones(mu.size()).to(device)
-    start = start.detach()
+        start  = torch.ones(mu.size())
+    start = start.detach().to(device)
     if max_start:
-        start = torch.where(start<torch.tensor(max_start).to(start.dtype), start, torch.tensor(max_start).to(start.dtype))
+        start = torch.where(start<torch.tensor(max_start).to(start.dtype).to(device), start, torch.tensor(max_start).to(start.dtype).to(device))
     if min_start:
-        start = torch.where(start>torch.tensor(min_start).to(start.dtype), start, torch.tensor(min_start).to(start.dtype))
+        start = torch.where(start>torch.tensor(min_start).to(start.dtype).to(device), start, torch.tensor(min_start).to(start.dtype).to(device))
     mu = mu.T.to(tens_type)
     nu = nu.T.to(tens_type)
     start = start.T.to(tens_type)
@@ -64,7 +64,7 @@ def sinkhorn(
         u = mu/torch.matmul(K, v)
         v = nu/torch.matmul(K.T, u)
         if stopThr > 0:
-            gamma = torch.matmul(torch.cat([torch.diag(u.T[j])[None, :] for j in range(u.size(1))]), torch.matmul(K, torch.cat([torch.diag(v.T[j])[None, :] for j in range(u.size(1))])))
+            gamma = torch.matmul(torch.cat([torch.diag(u.T[j]).to(device)[None, :] for j in range(u.size(1))]), torch.matmul(K, torch.cat([torch.diag(v.T[j]).to(device)[None, :] for j in range(u.size(1))])))
             mu_star = torch.matmul(gamma, torch.ones(u.size(0)).to(tens_type).to(device))
             nu_star = torch.matmul(torch.ones(u.size(0)).to(tens_type).to(device), gamma)
             mu_err = (mu.T - mu_star).abs().sum(1)
@@ -74,7 +74,7 @@ def sinkhorn(
                 if verbose:
                     print(f'Accuracy below threshold. Early termination after {it} iterations.')
                 break
-    gamma = torch.matmul(torch.cat([torch.diag(u.T[j])[None, :] for j in range(u.size(1))]), torch.matmul(K, torch.cat([torch.diag(v.T[j])[None, :] for j in range(u.size(1))])))
+    gamma = torch.matmul(torch.cat([torch.diag(u.T[j]).to(device)[None, :] for j in range(u.size(1))]), torch.matmul(K, torch.cat([torch.diag(v.T[j]).to(device)[None, :] for j in range(u.size(1))])))
     cost = (gamma * C).sum(1).sum(1)
     if not log:
         return cost
@@ -130,27 +130,27 @@ def average_accuracy(
     if type(data) == list:
         d = {'d1': None, 'd2': None, 'u': None, 'cost': None}
         for key in d.keys():
-            d[key] = torch.cat([data[i][key] for i in range(len(data))])
+            d[key] = torch.cat([data[i][key] for i in range(len(data))]).to(device)
     else:
         d = data
     l = int(math.sqrt(d['d1'].size(1)))
     c = euclidean_cost_matrix(l, l, 2, True)
     n = d['d1'].size(0)//nb_samples
-    diffs = torch.zeros(nb_samples)
+    diffs = torch.zeros(nb_samples).to(device)
     for i in tqdm(range(nb_samples)):
         if init == None:
             cost = sinkhorn(d['d1'][i*n:(i+1)*n], d['d2'][i*n:(i+1)*n], c, eps, max_iter=nb_iters, max_start=max_start, min_start=min_start)
         elif isinstance(init, DualApproximator): # in this case, not the Sinkhorn algorithm's accuracy is computed, but the DualApproximator's one.
-            f = init.net(torch.cat((d['d1'][i*n:(i+1)*n], d['d2'][i*n:(i+1)*n]), 1)).detach()
+            f = init.net(torch.cat((d['d1'][i*n:(i+1)*n], d['d2'][i*n:(i+1)*n]), 1)).to(device).detach()
             g = compute_c_transform(c, f)
             cost = compute_dual(d['d1'][i*n:(i+1)*n], d['d2'][i*n:(i+1)*n], f, g).view(-1)
         else:
-            c_transform = compute_c_transform(c, init(torch.cat((d['d1'][i*n:(i+1)*n], d['d2'][i*n:(i+1)*n]), 1)).detach())
+            c_transform = compute_c_transform(c, init(torch.cat((d['d1'][i*n:(i+1)*n], d['d2'][i*n:(i+1)*n]), 1)).to(device).detach())
             cost = sinkhorn(d['d1'][i*n:(i+1)*n], d['d2'][i*n:(i+1)*n], c, eps, max_iter=nb_iters, start=torch.exp(c_transform/eps), max_start=max_start, min_start=min_start)
 
         cost_diff = cost - d['cost'][i*n:(i+1)*n].view(-1)
         nb_nan = cost_diff.isnan().sum()
-        cost_diff = torch.where(cost_diff.isnan(), torch.tensor(0).to(cost_diff.dtype), cost_diff)
+        cost_diff = torch.where(cost_diff.isnan(), torch.tensor(0).to(cost_diff.dtype).to(device), cost_diff)
         if nb_nan/len(cost_diff) > .1:
             perc = '%.2f'%(100*nb_nan/len(cost_diff))
             print(f'Warning! {perc}% of costs are NaN.')
@@ -197,7 +197,7 @@ def compare_iterations(
     if type(data) == list:
         data_dict = {'d1': None, 'd2': None, 'u': None, 'cost': None}
         for key in data_dict.keys():
-            data_dict[key] = torch.cat([data[i][key] for i in range(len(data))])
+            data_dict[key] = torch.cat([data[i][key] for i in range(len(data))]).to(device)
     else:
         data_dict = data
     iters = [int(i*max_iter/nb_steps) + 1 for i in range(nb_steps)]
@@ -225,7 +225,7 @@ def compare_iterations(
                     cost = log['cost']
                     cost_diff = cost - data_dict['cost'][k*n:(k+1)*n].view(-1)
                     nb_nan = cost_diff.isnan().sum()
-                    cost_diff = torch.where(cost_diff.isnan(), torch.tensor(0).to(cost_diff.dtype), cost_diff)
+                    cost_diff = torch.where(cost_diff.isnan(), torch.tensor(0).to(cost_diff.dtype).to(device), cost_diff)
                     if nb_nan/len(cost_diff) > .1:
                         perc = '%.2f'%(100*nb_nan/len(cost_diff))
                         print(f'Warning! {perc}% of costs are NaN.')
@@ -278,7 +278,7 @@ def compare_time(
     if type(data) == list:
         d = {'d1': None, 'd2': None, 'u': None, 'cost': None}
         for key in d.keys():
-            d[key] = torch.cat([data[i][key] for i in range(len(data))])
+            d[key] = torch.cat([data[i][key] for i in range(len(data))]).to(device)
     else:
         d = data
     times = [[] for i in range(len(inits))]
@@ -355,7 +355,7 @@ def compare_accuracy(
     if type(data) == list:
         d = {'d1': None, 'd2': None, 'u': None, 'cost': None}
         for key in d.keys():
-            d[key] = torch.cat([data[i][key] for i in range(len(data))])
+            d[key] = torch.cat([data[i][key] for i in range(len(data))]).to(device)
     else:
         d = data
     accs = [max_acc - i * (max_acc - min_acc)/25 for i in range(25)]
@@ -441,7 +441,7 @@ def log_sinkhorn(
     for i in range(max_iter):
         f = row_min(S(C, f, g),   eps) + f + eps * torch.log(mu)
         g = row_min(S(C, f, g).T, eps) + g + eps * torch.log(nu) # the column minimum function is equivalent to the row minimum function of the transpose
-    gamma = torch.matmul(torch.diag(torch.exp(f/eps)), torch.matmul(torch.exp(-C/eps), torch.diag(torch.exp(g/eps))))
+    gamma = torch.matmul(torch.diag(torch.exp(f/eps)).to(device), torch.matmul(torch.exp(-C/eps), torch.diag(torch.exp(g/eps)).to(device)))
     cost = (gamma * C).sum().item()
     if not log:
         return cost
@@ -452,7 +452,7 @@ def S(cost, pot1, pot2):
     """
     Auxiliary function for log_sinkhorn.
     """
-    ones = torch.ones(pot1.size())[None, :].to(pot1.dtype)
+    ones = torch.ones(pot1.size())[None, :].to(pot1.dtype).to(device)
     return cost - torch.matmul(pot1[None, :].T, ones) - torch.matmul(ones.T, pot2[None, :])
 
 def row_min(A, eps):

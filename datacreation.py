@@ -100,7 +100,7 @@ def create_more_data(
         data = data.sum(1)
     if original:
         if remove_zeros:
-            data = data + 1e-3*torch.ones(data.size())
+            data = data + 1e-3*torch.ones(data.size()).to(device)
         if rescale:
             data /= data.sum(-1).sum(-1).unsqueeze(-1).unsqueeze(-1)
         return data
@@ -152,14 +152,14 @@ def generate_dataset_data(
         data = resize_tensor(data, (length, length))
     cost_matrix = euclidean_cost_matrix(length, length, 2, True)
     dataset = []
-    a = torch.cat(([data[torch.randperm(data.size(0))] for i in range(n_samples//data.size(0) + 1)]))
-    b = torch.cat(([data[torch.randperm(data.size(0))] for i in range(n_samples//data.size(0) + 1)]))
+    a = torch.cat(([data[torch.randperm(data.size(0)).to(device)] for i in range(n_samples//data.size(0) + 1)]))
+    b = torch.cat(([data[torch.randperm(data.size(0)).to(device)] for i in range(n_samples//data.size(0) + 1)]))
     for i in tqdm(range(n_samples//batch_size)):
         batch_data = []
         for j in range(batch_size):
             log = ot.emd(a[i*batch_size+j], b[i*batch_size+j], cost_matrix, log=True)
             batch_data.append({'d1': a[i*batch_size+j].float()[None,:].to(device), 'd2': b[i*batch_size+j].float()[None,:].to(device), 'u': log[1]['u'].float()[None,:].to(device), 'cost': torch.tensor([log[1]['cost']], dtype=torch.float)[None,:].to(device)})
-        batch = {'d1': torch.cat([batch_data[i]['d1'] for i in range(batch_size)], 0), 'd2': torch.cat([batch_data[i]['d2'] for i in range(batch_size)], 0), 'u': torch.cat([batch_data[i]['u'] for i in range(batch_size)], 0), 'cost': torch.cat([batch_data[i]['cost'] for i in range(batch_size)], 0)}
+        batch = {'d1': torch.cat([batch_data[i]['d1'] for i in range(batch_size)], 0), 'd2': torch.cat([batch_data[i]['d2'] for i in range(batch_size)], 0), 'u': torch.cat([batch_data[i]['u'] for i in range(batch_size)], 0), 'cost': torch.cat([batch_data[i]['cost'] for i in range(batch_size)], 0).to(device)}
         if center:
             batch['u'] = batch['u'] - batch['u'].sum(1)[:, None]/(length*length)
         dataset.append(batch)
@@ -256,8 +256,8 @@ def generate_simple_data(
         a = a**mult
         b = b**mult
         if remove_zeros:
-            a += 1e-3*torch.ones(a.size())
-            b += 1e-3*torch.ones(b.size())
+            a += 1e-3*torch.ones(a.size()).to(device)
+            b += 1e-3*torch.ones(b.size()).to(device)
         a /= a.sum(1)[:, None]
         b /= b.sum(1)[:, None]
         if not sink:
@@ -311,5 +311,5 @@ def data_to_list(from_file):
     :param from_file: name of file input data is located at.
     """
     data = load_data(from_file)
-    new_data = {'d1': torch.cat(([data[i]['d1'] for i in range(len(data))])), 'd2': torch.cat(([data[i]['d2'] for i in range(len(data))])), 'u': torch.cat(([data[i]['u'] for i in range(len(data))])), 'cost': torch.cat(([data[i]['cost'] for i in range(len(data))]))}
+    new_data = {'d1': torch.cat(([data[i]['d1'] for i in range(len(data))])).to(device), 'd2': torch.cat(([data[i]['d2'] for i in range(len(data))])).to(device), 'u': torch.cat(([data[i]['u'] for i in range(len(data))])).to(device), 'cost': torch.cat(([data[i]['cost'] for i in range(len(data))])).to(device)}
     return new_data

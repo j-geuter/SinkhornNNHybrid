@@ -118,13 +118,13 @@ class DualApproximator:
         if verbose >=2 and (dataset['d1'].size(0)//(num_tests * batchsize)) == 0:
             verbose = 1
         for e in range(epochs):
-            perm = torch.randperm(dataset['d1'].size(0))
+            perm = torch.randperm(dataset['d1'].size(0)).to(device)
             for key in dataset.keys():
                 dataset[key] = dataset[key][perm]
             for i in tqdm(range(dataset['d1'].size(0)//batchsize)):
                 d1 = dataset['d1'][i*batchsize:(i+1)*batchsize]
                 d2 = dataset['d2'][i*batchsize:(i+1)*batchsize]
-                x = torch.cat((d1, d2), 1)
+                x = torch.cat((d1, d2), 1).to(device)
                 out = self.net(x)
                 self.optimizer.zero_grad()
                 loss = loss_function(out, dataset['u'][i*batchsize:(i+1)*batchsize])
@@ -256,13 +256,13 @@ class DualApproximator:
         if verbose >=2 and (dataset['d1'].size(0)//(num_tests * batchsize)) == 0:
             verbose = 1
         for e in range(epochs):
-            perm = torch.randperm(dataset['d1'].size(0))
+            perm = torch.randperm(dataset['d1'].size(0)).to(device)
             for key in dataset.keys():
                 dataset[key] = dataset[key][perm]
             for i in tqdm(range(dataset['d1'].size(0)//batchsize)):
                 d1 = dataset['d1'][i*batchsize:(i+1)*batchsize]
                 d2 = dataset['d2'][i*batchsize:(i+1)*batchsize]
-                x = torch.cat((d1, d2), 1)
+                x = torch.cat((d1, d2), 1).to(device)
                 u = self.net(x)
                 v = compute_c_transform(self.costmatrix, u)
                 ws_guess = compute_dual(d1, d2, u, v)
@@ -362,7 +362,7 @@ class DualApproximator:
         """
         self.net.eval()
         with torch.no_grad():
-            x = torch.cat((a, b), 1)
+            x = torch.cat((a, b), 1).to(device)
             out = self.net(x)
         return out
 
@@ -408,7 +408,7 @@ class DualApproximator:
                 ws_guess = compute_dual(batch['d1'], batch['d2'], u, v)
                 loss = loss_function(ws_guess, batch['cost'])
                 if rel:
-                    loss *= len(ws_guess)/torch.tensor([abs(c)**z for c in batch['cost']]).sum()
+                    loss *= len(ws_guess)/torch.tensor([abs(c)**z for c in batch['cost']]).to(device).sum()
                 l += loss.item()
                 if return_ws:
                     ws_list.append((ws_guess, batch['cost']))
