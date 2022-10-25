@@ -1,6 +1,6 @@
 # SinkhornNNHybrid
 Welcome to the SinkhornNNHybrid repository! This repo provides the PyTorch implementation for the thesis 'A Sinkhorn-NN Hybrid Algorithm for Optimal
-Transport', which is available as `Thesis.pdf`.
+Transport', which is available as `Thesis.pdf`.  
 The code is structured in six files, `DualOTComputation`, `networks`, `utils`, `sinkhorn`, `costmatrix` and `datacreation`. The main files you'll need reproduce the results from the thesis are `DualOTComputation` and `sinkhorn`, and `utils` contains some useful functions that let you visualize or plot data. To generate training and testing data first, you'll need the
 `datacreation` file. The `costmatrix` file contains a function to create cost matrices based on the Euclidean distance, and `networks` the neural network class; you won't need to actively use either of these files unless you want to define your own cost function or network structure, in which case it is easiest to alter the `euclidean_cost_matrix` function and the `FCNN` class therein.
 The `requirements.txt` file lists all dependencies and their versions.  
