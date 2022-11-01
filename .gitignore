@@ -1,3 +1,4 @@
 Data/*
 shenv/*
 __pycache__/*
+src/__pycache__/*
