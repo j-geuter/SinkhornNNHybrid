@@ -12,6 +12,7 @@ class FCNN(nn.Module):
     """
     def __init__(self, dim, symmetry = False, doubletransform = False, zerosum = False):
         """
+        :param dim: dimension of the input images, results in 2*`dim` dimensional input.
         :param symmetry: if True, enforces symmetry
         :param doubletransform: if True, returns the double c transform of the output.
         :param zerosum: if True, shifts the output such that it has zero sum (like the potentials in the training data).
