@@ -1,9 +1,12 @@
 import torch
 import torch.nn as nn
 import math
+from torch.fft import fft, ifft
+
 
 from utils import compute_c_transform
 from costmatrix import euclidean_cost_matrix
+from complexbatchnorm import CBatchNorm
 
 
 class FCNN(nn.Module):
@@ -26,11 +29,11 @@ class FCNN(nn.Module):
         self.cost = euclidean_cost_matrix(l, l, 2, True)
         self.l1 = nn.Sequential(
             nn.Linear(2*dim, 6*dim).to(torch.cfloat),
-            nn.BatchNorm1d(6*dim),
+            #CBatchNorm(input_size=6*dim),
             )
         self.l2 = nn.Sequential(
             nn.Linear(6*dim, 6*dim).to(torch.cfloat),
-            nn.BatchNorm1d(6*dim),
+            #CBatchNorm(input_size=6*dim),
             )
         self.l3 = nn.Sequential(
             nn.Linear(6*dim, 1*dim).to(torch.cfloat),
@@ -42,6 +45,8 @@ class FCNN(nn.Module):
         ]
 
     def forward(self, x):
+        dt = x.dtype
+        x = fft(x)
         if not self.symmetry:
             for l in self.layers:
                 x = l(x)
@@ -59,4 +64,5 @@ class FCNN(nn.Module):
             x = compute_c_transform(self.cost, compute_c_transform(self.cost, x))
         if self.zerosum:
             x = x - x.sum(1)[:,None]/self.dim
+        x = ifft(x).to(dt)
         return x
