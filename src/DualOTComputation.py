@@ -419,7 +419,14 @@ class DualApproximator:
 
 
 if __name__ == '__main__':
-    length = input("Input width of data: ")
-    length = int(length)
+    #length = input("Input width of data: ")
+    #length = int(length)
     lr = 0.005
-    d = DualApproximator(length=length, networkclass=FCNN, lr=lr)
+    d = DualApproximator(length=14, networkclass=FCNN, lr=lr)
+    loc="../Data/10k_14by14_random_mult2_sinkhorn_eps0p2_iters1000.py"
+    data=load_data("../Data/1k_14by14_random_mult2_sinkhorn_eps0p2_iters1000.py")
+    l=[]
+    for i in range(10):
+        d.reset_params()
+        d.learn_potential(loc)
+        l.append(d.test_potential(data))

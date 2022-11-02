@@ -62,7 +62,7 @@ class FCNN(nn.Module):
         if not self.symmetry:
             for l in self.layers:
                 x = l(x)
-                x = complexrelu(x)
+                #x = complexrelu(x)
             x = self.l3(x)
         else:
             x1 = x.clone()
@@ -78,5 +78,6 @@ class FCNN(nn.Module):
             x = compute_c_transform(self.cost, compute_c_transform(self.cost, x))
         if self.zerosum:
             x = x - x.sum(1)[:,None]/self.dim
-        x = ifft(x).to(dt)
+        #x = ifft(x).to(dt)
+        x = x.to(dt)
         return x
