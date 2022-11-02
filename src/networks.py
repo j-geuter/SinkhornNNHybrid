@@ -8,6 +8,19 @@ from utils import compute_c_transform
 from costmatrix import euclidean_cost_matrix
 from complexbatchnorm import CBatchNorm
 
+def complexrelu(input):
+    #r = torch.relu(input.real)
+    #i = torch.relu(input.imag)
+    #return torch.view_as_complex(torch.cat((r[None, :], i[None, :]), 0).T.contiguous()).T.contiguous()
+    return torch.where(input.imag<torch.pi/2, input, torch.zeros(1).to(input.dtype))
+
+
+class ComplexReLU(nn.Module):
+    def __init__(self):
+        super().__init__()
+    def forward(self, input):
+        return complexrelu(input)
+
 
 class FCNN(nn.Module):
     """
@@ -40,8 +53,7 @@ class FCNN(nn.Module):
             )
         self.layers = [
             self.l1,
-            self.l2,
-            self.l3
+            self.l2
         ]
 
     def forward(self, x):
@@ -50,6 +62,8 @@ class FCNN(nn.Module):
         if not self.symmetry:
             for l in self.layers:
                 x = l(x)
+                x = complexrelu(x)
+            x = self.l3(x)
         else:
             x1 = x.clone()
             for l in self.layers:
