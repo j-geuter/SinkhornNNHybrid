@@ -27,7 +27,6 @@ class FCNN(nn.Module):
         self.l1 = nn.Sequential(
             nn.Linear(2*dim, 6*dim),
             nn.BatchNorm1d(6*dim),
-            nn.ReLU(),
             )
         self.l2 = nn.Sequential(
             nn.Linear(6*dim, 6*dim),
