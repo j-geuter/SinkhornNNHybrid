@@ -432,7 +432,8 @@ class DualApproximator:
             data = 'Data/data.py'
             self.lr = lrs[i]
             self.optimizer = Adam(self.net.parameters(), lr=self.lr)
-            self.learn_potential(data, verbose=1, test_data=testdata)
+            res = self.learn_potential(data, verbose=1, test_data=testdata)
+            print(res)
 
 
 if __name__ == '__main__':
