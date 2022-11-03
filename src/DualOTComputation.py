@@ -337,6 +337,7 @@ class DualApproximator:
             for i in range(start, end + 1):
                 if lr:
                     self.lr = lr[j*(end + 1 - start) + i]
+                    self.optimizer = Adam(self.net.parameters(), lr=self.lr)
                 print(f'Metaepoch {j}, file {i} of {end}.')
                 log = f(f'{filename}_{i}.py', loss_function=loss_function, epochs=epochs, batchsize=batchsize, verbose=verbose, num_tests=num_tests, test_data=test_data)
                 if (j,i) in save_points:
@@ -418,8 +419,9 @@ class DualApproximator:
         return l
 
 
+
+
+
 if __name__ == '__main__':
-    length = input("Input width of data: ")
-    length = int(length)
     lr = 0.005
-    d = DualApproximator(length=length, networkclass=FCNN, lr=lr)
+    d = DualApproximator(length=28, networkclass=FCNN, lr=lr)
