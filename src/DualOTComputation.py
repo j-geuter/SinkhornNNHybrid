@@ -420,8 +420,8 @@ class DualApproximator:
 
 
 
-
-
 if __name__ == '__main__':
+    length = input("Input width of data: ")
+    length = int(length)
     lr = 0.005
-    d = DualApproximator(length=28, networkclass=FCNN, lr=lr)
+    d = DualApproximator(length=length, networkclass=FCNN, lr=lr)
