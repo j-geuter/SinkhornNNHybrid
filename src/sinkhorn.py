@@ -91,10 +91,11 @@ def sinkhorn(
         nu_err = torch.where(nu_err.isnan(), torch.tensor(0).to(tens_type).to(device), nu_err)
 
         if mu_nan/mu_err.size(0) > 0.1 or nu_nan/nu_err.size(0) > 0.1:
-            perc1 = '%.2f'%(100*mu_nan/mu_err.size(0))
-            perc2 = '%.2f'%(100*nu_nan/nu_err.size(0))
+            perc1 = 100*mu_nan/mu_err.size(0)
+            perc2 = 100*nu_nan/nu_err.size(0)
+            perc = '%.2f'%((perc1 + perc2)/2)
             if verbose:
-                print(f'Warning! {perc1}% and {perc2}% of marginal constraint violations are NaN.')
+                print(f'Warning! {perc}% of marginal constraint violations are NaN.')
 
         mu_err = mu_err.sum()/(mu_err.size(0) - mu_nan)
         nu_err = nu_err.sum()/(nu_err.size(0) - nu_nan)
