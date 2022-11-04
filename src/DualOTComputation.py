@@ -418,7 +418,7 @@ class DualApproximator:
             return (l, ws_list)
         return l
 
-    def trainalot(self, nb_samples = 3e6, max_lr = 0.0005, lr_step = 0.00001):
+    def trainalot(self, nb_samples = 3e6, max_lr = 0.0005, lr_step = 0.00001, eps = 0.2, iters = 1000):
         nb_runs = int(nb_samples//1e5)
         lrs = [max_lr - lr_step*i for i in range(nb_runs)]
         generate_simple_data('Data/test_file_0.py', length=28, mult=3, n_samples=5000)
@@ -429,7 +429,7 @@ class DualApproximator:
         generate_dataset_data('Data/test_file_3.py', train=False, n_samples=5000, data=teddies)
         testdata = [load_data(f'Data/test_file_{i}.py') for i in range(4)]
         for i in range(nb_runs):
-            generate_simple_data('Data/data.py', length=28, mult=3)
+            generate_simple_data('Data/data.py', length=28, mult=3, sink=True, iters=iters, eps=eps)
             data = 'Data/data.py'
             self.lr = lrs[i]
             self.optimizer = Adam(self.net.parameters(), lr=self.lr)
