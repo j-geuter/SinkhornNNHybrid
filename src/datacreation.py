@@ -229,7 +229,9 @@ def generate_simple_data(
                             mult = 1,
                             sink = False,
                             iters = 1000,
-                            eps = 0.4
+                            eps = 0.4,
+                            dtypein = torch.float64,
+                            dtypeout = torch.float32
                         ):
     """
     Generates a dataset of 'n_samples' distributions of size 'length'*'length', their OT cost using the euclidean distance with exponent 'cost_exp' (meaning for default 2, we get
@@ -246,37 +248,68 @@ def generate_simple_data(
     :param sink: if True, generates data using the Sinkhorn algorithm.
     :param iters: number of iterations for Sinkhorn algorithm.
     :param eps: regularizer for Sinkhorn algorithm.
+    :param dtypein: dtype of tensors for sinkhorn computations.
+    :param dtypeout: dtype in which data will be saved.
     """
     dataset = []
     dist_dim = length*length
     cost_matrix = euclidean_cost_matrix(length, length, cost_exp, True)
     for i in tqdm(range(n_samples//batchsize)):
         data = []
-        a, b = torch.rand(batchsize, dist_dim).to(torch.float64).to(device), torch.rand(batchsize, dist_dim).to(torch.float64).to(device)
+        a, b = torch.rand(batchsize, dist_dim).to(dtypein).to(device), torch.rand(batchsize, dist_dim).to(dtypein).to(device)
         a = a**mult
         b = b**mult
         if remove_zeros:
-            a += 1e-3*torch.ones(a.size()).to(device)
-            b += 1e-3*torch.ones(b.size()).to(device)
+            a += 1e-3*torch.ones(a.size()).to(dtypein).to(device)
+            b += 1e-3*torch.ones(b.size()).to(dtypein).to(device)
         a /= a.sum(1)[:, None]
         b /= b.sum(1)[:, None]
         if not sink:
             log = ot.emd(a[0], b[0], cost_matrix, log=True)
-            log[1]['u'] = log[1]['u'][None, :].to(device)
-            log[1]['cost'] = torch.tensor([[log[1]['cost']]]).to(device)
+            log[1]['u'] = log[1]['u'][None, :].to(dtypein).to(device)
+            log[1]['cost'] = torch.tensor([[log[1]['cost']]]).to(dtypein).to(device)
             for k in range(1, batchsize):
                 curr_log = ot.emd(a[k], b[k], cost_matrix, log=True)
-                log[1]['u'] = torch.cat((log[1]['u'], curr_log[1]['u'][None, :].to(device)), 0)
-                log[1]['cost'] = torch.cat((log[1]['cost'], torch.tensor([[curr_log[1]['cost']]]).to(device)), 0)
+                log[1]['u'] = torch.cat((log[1]['u'], curr_log[1]['u'][None, :].to(dtypein).to(device)), 0)
+                log[1]['cost'] = torch.cat((log[1]['cost'], torch.tensor([[curr_log[1]['cost']]]).to(dtypein).to(device)), 0)
+            batch = {'d1': a.to(dtypeout), 'd2': b.to(dtypeout), 'u': log[1]['u'].to(dtypeout), 'cost': log[1]['cost'].to(dtypeout)}
         else:
             log = (0, sinkhorn(a, b, cost_matrix, eps, max_iter=iters, log=True)) # cast to tuple s.t. this has the same format as the `ot.emd` output.
             log[1]['cost'] = log[1]['cost'][:, None]
-            idx = torch.tensor([k for k in range(batchsize) if not torch.any(log[1]['u'][k].isnan()) and not log[1]['cost'][k].isnan()]).to(torch.int64).to(device)
+            idx = torch.tensor([k for k in range(batchsize) if not torch.any(log[1]['u'][k].isnan()) and not log[1]['cost'][k].isnan()]).to(device)
+            if len(idx) == 0:
+                print("Warning! All samples compute to NaN. Try a smaller regularizing coefficient or less iterations.")
+                return
             log[1]['u'] = log[1]['u'].index_select(0, idx)
             log[1]['cost'] = log[1]['cost'].index_select(0, idx)
             a = a.index_select(0, idx)
             b = b.index_select(0, idx)
-        batch = {'d1': a.to(torch.float), 'd2': b.to(torch.float), 'u': log[1]['u'].to(torch.float), 'cost': log[1]['cost'].to(torch.float)}
+            batch = {'d1': a.to(dtypeout), 'd2': b.to(dtypeout), 'u': log[1]['u'].to(dtypeout), 'cost': log[1]['cost'].to(dtypeout)}
+            if not len(idx) == batchsize:
+                counter = len(idx)
+                while counter < batchsize:
+                    a, b = torch.rand(batchsize, dist_dim).to(dtypein).to(device), torch.rand(batchsize, dist_dim).to(dtypein).to(device)
+                    a = a**mult
+                    b = b**mult
+                    if remove_zeros:
+                        a += 1e-3*torch.ones(a.size()).to(dtypein).to(device)
+                        b += 1e-3*torch.ones(b.size()).to(dtypein).to(device)
+                    a /= a.sum(1)[:, None]
+                    b /= b.sum(1)[:, None]
+                    log = (0, sinkhorn(a, b, cost_matrix, eps, max_iter=iters, log=True)) # cast to tuple s.t. this has the same format as the `ot.emd` output.
+                    log[1]['cost'] = log[1]['cost'][:, None]
+                    idx = torch.tensor([k for k in range(batchsize) if not torch.any(log[1]['u'][k].isnan()) and not log[1]['cost'][k].isnan()]).to(device)
+                    if len(idx) == 0:
+                        print("Warning! All samples compute to NaN. Try a smaller regularizing coefficient or less iterations.")
+                        return
+                    counter += len(idx)
+                    log[1]['u'] = log[1]['u'].index_select(0, idx)
+                    log[1]['cost'] = log[1]['cost'].index_select(0, idx)
+                    a = a.index_select(0, idx)
+                    b = b.index_select(0, idx)
+                    batch = {'d1': torch.cat((a.to(dtypeout), batch['d1']), 0), 'd2': torch.cat((b.to(dtypeout), batch['d2']), 0), 'u': torch.cat((log[1]['u'].to(dtypeout), batch['u']), 0), 'cost': torch.cat((log[1]['cost'].to(dtypeout), batch['cost']), 0)}
+            for key in batch.keys():
+                batch[key] = batch[key][:100, :]
         if center:
             batch['u'] = batch['u'] - batch['u'].sum(1)[:, None]/dist_dim
         dataset.append(batch)
