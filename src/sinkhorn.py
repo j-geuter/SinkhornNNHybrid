@@ -7,6 +7,7 @@ from tqdm import tqdm
 
 from utils import compute_c_transform, compute_mean_conf, compute_dual, plot_conf
 from costmatrix import euclidean_cost_matrix
+from networks import FCNN
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -141,13 +142,13 @@ def average_accuracy(
     for i in tqdm(range(nb_samples)):
         if init == None:
             cost = sinkhorn(d['d1'][i*n:(i+1)*n], d['d2'][i*n:(i+1)*n], c, eps, max_iter=nb_iters, max_start=max_start, min_start=min_start)
-        elif isinstance(init, DualApproximator): # in this case, not the Sinkhorn algorithm's accuracy is computed, but the DualApproximator's one.
+        elif isinstance(init, FCNN):
+            c_transform = compute_c_transform(c, init(torch.cat((d['d1'][i*n:(i+1)*n], d['d2'][i*n:(i+1)*n]), 1)).to(device).detach())
+            cost = sinkhorn(d['d1'][i*n:(i+1)*n], d['d2'][i*n:(i+1)*n], c, eps, max_iter=nb_iters, start=torch.exp(c_transform/eps), max_start=max_start, min_start=min_start)
+        else: # in this case, not the Sinkhorn algorithm's accuracy is computed, but the DualApproximator's one.
             f = init.net(torch.cat((d['d1'][i*n:(i+1)*n], d['d2'][i*n:(i+1)*n]), 1)).to(device).detach()
             g = compute_c_transform(c, f)
             cost = compute_dual(d['d1'][i*n:(i+1)*n], d['d2'][i*n:(i+1)*n], f, g).view(-1)
-        else:
-            c_transform = compute_c_transform(c, init(torch.cat((d['d1'][i*n:(i+1)*n], d['d2'][i*n:(i+1)*n]), 1)).to(device).detach())
-            cost = sinkhorn(d['d1'][i*n:(i+1)*n], d['d2'][i*n:(i+1)*n], c, eps, max_iter=nb_iters, start=torch.exp(c_transform/eps), max_start=max_start, min_start=min_start)
 
         cost_diff = cost - d['cost'][i*n:(i+1)*n].view(-1)
         nb_nan = cost_diff.isnan().sum()
