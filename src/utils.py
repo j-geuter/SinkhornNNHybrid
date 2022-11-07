@@ -8,6 +8,8 @@ from scipy.stats import t as t_scipy
 
 from costmatrix import euclidean_cost_matrix
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 SMALL = 8
 MEDIUM = 12
 BIG = 16
@@ -107,6 +109,8 @@ def compute_mean_conf(data, conf):
     :return: A 3-tuple. The first entry corresponds to the lower bound on the confidence interval, the second one to the mean, the third one to the upper bound.
     """
     n = len(data)
+    if isinstance(data, torch.Tensor):
+        data = data.cpu()
     x     = np.array(data)
     means = x.mean(0)
     stds  = x.std(0)
@@ -114,6 +118,8 @@ def compute_mean_conf(data, conf):
     t     = np.abs(t_scipy.ppf((1 - conf)/2, dof))
     lowers = means - stds * t/np.sqrt(len(x))
     uppers = means + stds * t/np.sqrt(len(x))
+    if isinstance(data, torch.Tensor):
+        data = data.to(device)
     return(lowers, means, uppers)
 
 
