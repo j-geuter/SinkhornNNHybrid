@@ -286,7 +286,7 @@ def generate_simple_data(
         if covs == None:
             covs = torch.eye(dist_dim)
         covs = covs.to(dtypein).to(device)
-        gaussian = MultivariateNormal(mean, cov)
+        gaussian = MultivariateNormal(means, covs)
     for i in tqdm(range(n_samples//batchsize)):
         data = []
         if not gauss:
