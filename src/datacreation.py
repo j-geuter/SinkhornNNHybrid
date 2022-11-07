@@ -10,6 +10,7 @@ from torch.utils.data import DataLoader
 import random
 import pickle
 import os
+from torch.distributions.multivariate_normal import MultivariateNormal
 
 from costmatrix import euclidean_cost_matrix
 from sinkhorn import sinkhorn
@@ -218,6 +219,21 @@ def resize_file(from_file, to_file, size, center = True):
         new_data.append(new_batch)
     save_data(new_data, to_file)
 
+def create_random_cov_matrix(
+                                length = 28
+                            ):
+    """
+    Creates a random symmetric, positive semi-definite matrix.
+    :param length: height and width of the distributions. Dimension equals `length`*`length`.
+    :return: two-dimensional tensor.
+    """
+    dim = length*length
+    sigma = torch.rand(dim, dim)
+    sigma = torch.mm(sigma, sigma.T)
+    sigma.add_(torch.eye(dim*dim))
+    return sigma
+
+
 def generate_simple_data(
                             file_name,
                             length = 2,
@@ -230,6 +246,10 @@ def generate_simple_data(
                             sink = False,
                             iters = 1000,
                             eps = 0.4,
+                            gauss = False,
+                            mean = None,
+                            cov = None,
+                            mean = None,
                             dtypein = torch.float64,
                             dtypeout = torch.float32
                         ):
@@ -249,15 +269,33 @@ def generate_simple_data(
     :param sink: if True, generates data using the Sinkhorn algorithm.
     :param iters: number of iterations for Sinkhorn algorithm.
     :param eps: regularizer for Sinkhorn algorithm.
+    :param gauss: if True, uses absolute value of a multivariate Gaussian for sample creation instead.
+    :param means: if None, uses zero mean for the Gaussian. Can also be a one dimensional tensor of length `length`**2, in which case it is used as mean. Can also be a list of multiple such means, in which case they're equally used for sample generation.
+    :param covs: if None, uses the identity matrix as covariance matrix for the multivariate Gaussian. Can also be a `length`**2 x `length`**2 dimensional tensor, in which case this is used as covariance matrix. Can also be a list of multiple such matrices, in which case they're equally used in sample generation.
     :param dtypein: dtype of tensors for sinkhorn computations.
     :param dtypeout: dtype in which data will be saved.
     """
     dataset = []
     dist_dim = length*length
     cost_matrix = euclidean_cost_matrix(length, length, cost_exp, True)
+    if gauss:
+        if isinstance(means, list):
+            pass
+        if mean == None:
+            mean = torch.zeros(dist_dim, dist_dim)
+        mean = mean.to(dtypein).to(device)
+        if cov == None:
+            cov = torch.eye(dist_dim)
+        cov = cov.to(dtypein).to(device)
+        gaussian = MultivariateNormal(mean, cov)
     for i in tqdm(range(n_samples//batchsize)):
         data = []
-        a, b = torch.rand(batchsize, dist_dim).to(dtypein).to(device), torch.rand(batchsize, dist_dim).to(dtypein).to(device)
+        if not gauss:
+            a, b = torch.rand(batchsize, dist_dim).to(dtypein).to(device), torch.rand(batchsize, dist_dim).to(dtypein).to(device)
+        else:
+            if isinstance(means, list):
+                gaussian = MultivariateNormal(means[int(i/((n_samples//batchsize)/len(means)))], covs[int(i/((n_samples//batchsize)/len(covs)))])
+            a, b = gaussian.sample((batchsize,)).abs().to(dtypein).to(device), gaussian.sample((batchsize,)).abs().to(dtypein).to(device)
         a = a**mult
         b = b**mult
         if remove_zeros:
