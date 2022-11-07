@@ -236,7 +236,8 @@ def generate_simple_data(
     """
     Generates a dataset of 'n_samples' distributions of size 'length'*'length', their OT cost using the euclidean distance with exponent 'cost_exp' (meaning for default 2, we get
     the squared Wasserstein-2-distance), and their two dual variables. Saves dataset in a file.
-    NOTE: If sink==True, all samples resulting in NaN will be removed, possibly resulting in less than `n_samples` samples in the end.
+    NOTE: If sink==True, all samples resulting in NaN will be removed. If possible, new samples that are not NaN will be generated in order to achieve a total number of `n_samples`
+    samples. If all new samples compute to NaN as well, then the function terminates.
     :param file_name: name of the file to save dataset in.
     :param length: width/height of data samples.
     :param n_samples: total number of samples created.
