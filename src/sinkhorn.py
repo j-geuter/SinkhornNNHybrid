@@ -7,6 +7,7 @@ from tqdm import tqdm
 
 from utils import compute_c_transform, compute_mean_conf, compute_dual, plot_conf
 from costmatrix import euclidean_cost_matrix
+from DualOTComputation import DualApproximator
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
