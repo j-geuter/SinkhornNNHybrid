@@ -247,9 +247,8 @@ def generate_simple_data(
                             iters = 1000,
                             eps = 0.4,
                             gauss = False,
-                            mean = None,
-                            cov = None,
-                            mean = None,
+                            means = None,
+                            covs = None,
                             dtypein = torch.float64,
                             dtypeout = torch.float32
                         ):
@@ -270,7 +269,7 @@ def generate_simple_data(
     :param iters: number of iterations for Sinkhorn algorithm.
     :param eps: regularizer for Sinkhorn algorithm.
     :param gauss: if True, uses absolute value of a multivariate Gaussian for sample creation instead.
-    :param means: if None, uses zero mean for the Gaussian. Can also be a one dimensional tensor of length `length`**2, in which case it is used as mean. Can also be a list of multiple such means, in which case they're equally used for sample generation.
+    :param means: if None, uses zero mean for the Gaussian. Can also be a one dimensional tensor of length `length`**2, in which case it is used as mean. Can also be a list of multiple such means, in which case they're equally used for sample generation. Either BOTH `means` and `covs` are lists, or not.
     :param covs: if None, uses the identity matrix as covariance matrix for the multivariate Gaussian. Can also be a `length`**2 x `length`**2 dimensional tensor, in which case this is used as covariance matrix. Can also be a list of multiple such matrices, in which case they're equally used in sample generation.
     :param dtypein: dtype of tensors for sinkhorn computations.
     :param dtypeout: dtype in which data will be saved.
@@ -281,12 +280,12 @@ def generate_simple_data(
     if gauss:
         if isinstance(means, list):
             pass
-        if mean == None:
-            mean = torch.zeros(dist_dim, dist_dim)
-        mean = mean.to(dtypein).to(device)
-        if cov == None:
-            cov = torch.eye(dist_dim)
-        cov = cov.to(dtypein).to(device)
+        if means == None:
+            means = torch.zeros(dist_dim)
+        means = means.to(dtypein).to(device)
+        if covs == None:
+            covs = torch.eye(dist_dim)
+        covs = covs.to(dtypein).to(device)
         gaussian = MultivariateNormal(mean, cov)
     for i in tqdm(range(n_samples//batchsize)):
         data = []
