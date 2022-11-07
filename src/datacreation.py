@@ -277,9 +277,7 @@ def generate_simple_data(
     dataset = []
     dist_dim = length*length
     cost_matrix = euclidean_cost_matrix(length, length, cost_exp, True)
-    if gauss:
-        if isinstance(means, list):
-            pass
+    if gauss and not isinstance(means, list):
         if means == None:
             means = torch.zeros(dist_dim)
         means = means.to(dtypein).to(device)
@@ -326,7 +324,10 @@ def generate_simple_data(
             if not len(idx) == batchsize:
                 counter = len(idx)
                 while counter < batchsize:
-                    a, b = torch.rand(batchsize, dist_dim).to(dtypein).to(device), torch.rand(batchsize, dist_dim).to(dtypein).to(device)
+                    if not gauss:
+                        a, b = torch.rand(batchsize, dist_dim).to(dtypein).to(device), torch.rand(batchsize, dist_dim).to(dtypein).to(device)
+                    else:
+                        a, b = gaussian.sample((batchsize,)).abs().to(dtypein).to(device), gaussian.sample((batchsize,)).abs().to(dtypein).to(device)
                     a = a**mult
                     b = b**mult
                     if remove_zeros:
