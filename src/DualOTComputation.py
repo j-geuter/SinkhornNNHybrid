@@ -418,6 +418,24 @@ class DualApproximator:
             return (l, ws_list)
         return l
 
+    def trainalot(self, nb_samples = 3e6, max_lr = 0.0005, lr_step = 0.00001, eps = 0.2, iters = 1000):
+        nb_runs = int(nb_samples//1e5)
+        lrs = [max_lr - lr_step*i for i in range(nb_runs)]
+        generate_simple_data('Data/test_file_0.py', length=28, mult=3, n_samples=5000)
+        generate_dataset_data('Data/test_file_1.py', dataloader=DataLoader(MNIST(root='./Data/mnist_dataset', train=False, download=True, transform=torchvision.transforms.ToTensor()), batch_size=10000), train=False, n_samples=5000)
+        generate_dataset_data('Data/test_file_2.py', dataloader=DataLoader(CIFAR10(root='./Data/CIFAR', train=False, download=True, transform=torchvision.transforms.ToTensor()), batch_size=10000), train=False, n_samples=5000)
+        teddies = load_files_quickdraw(categories=1, per_category=10000, rand=False, names=['teddy-bear'], dir='./Data/QuickDraw/')['teddy-bear']
+        teddies = torch.tensor(teddies)
+        generate_dataset_data('Data/test_file_3.py', train=False, n_samples=5000, data=teddies)
+        testdata = [load_data(f'Data/test_file_{i}.py') for i in range(4)]
+        for i in range(nb_runs):
+            generate_simple_data('Data/data.py', length=28, mult=3, sink=True, iters=iters, eps=eps)
+            data = 'Data/data.py'
+            self.lr = lrs[i]
+            self.optimizer = Adam(self.net.parameters(), lr=self.lr)
+            res = self.learn_potential(data, verbose=1, test_data=testdata)
+            print(res)
+
 
 
 if __name__ == '__main__':
