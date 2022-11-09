@@ -22,7 +22,7 @@ def sinkhorn(
                 log = False,
                 stopThr = 0,
                 tens_type = torch.float64,
-                verbose = True,
+                verbose = False,
                 min_start = None,
                 max_start = None
             ):

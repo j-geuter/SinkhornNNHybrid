@@ -11,7 +11,7 @@ import random
 import pickle
 import os
 from torch.distributions.multivariate_normal import MultivariateNormal
-
+from skimage.draw import random_shapes
 from costmatrix import euclidean_cost_matrix
 from sinkhorn import sinkhorn
 
@@ -237,20 +237,21 @@ def create_random_cov_matrix(
 def generate_simple_data(
                             file_name,
                             length = 2,
-                            n_samples = 100000,
+                            n_samples = 2000,
                             cost_exp = 2,
                             batchsize = 100,
                             center = True,
                             remove_zeros = True,
                             mult = 1,
-                            sink = False,
+                            sink = True,
                             iters = 1000,
-                            eps = 0.4,
+                            eps = 0.3,
                             gauss = False,
                             means = None,
                             covs = None,
+                            random_shape=False,
                             dtypein = torch.float64,
-                            dtypeout = torch.float32
+                            dtypeout = torch.float64
                         ):
     """
     Generates a dataset of 'n_samples' distributions of size 'length'*'length', their OT cost using the euclidean distance with exponent 'cost_exp' (meaning for default 2, we get
@@ -287,17 +288,31 @@ def generate_simple_data(
         gaussian = MultivariateNormal(means, covs)
     for i in tqdm(range(n_samples//batchsize)):
         data = []
-        if not gauss:
-            a, b = torch.rand(batchsize, dist_dim).to(dtypein).to(device), torch.rand(batchsize, dist_dim).to(dtypein).to(device)
-        else:
+        if gauss:
             if isinstance(means, list):
                 gaussian = MultivariateNormal(means[int(i/((n_samples//batchsize)/len(means)))], covs[int(i/((n_samples//batchsize)/len(covs)))])
             a, b = gaussian.sample((batchsize,)).abs().to(dtypein).to(device), gaussian.sample((batchsize,)).abs().to(dtypein).to(device)
+        elif random_shape:
+            a,b=torch.zeros(batchsize, dist_dim).to(dtypein).to(device), torch.zeros(batchsize, dist_dim).to(dtypein).to(device)
+            for k in range(batchsize):
+                A, _ = random_shapes((28, 28), channel_axis=None, max_shapes=20)
+                B, _ = random_shapes((28, 28), channel_axis=None, max_shapes=20)
+                A = torch.from_numpy(A).to(dtypein).to(device)
+                B = torch.from_numpy(B).to(dtypein).to(device)
+                A=(255-A)/255 
+                B=(255-B)/255
+                A=torch.reshape(A,(-1,))
+                B=torch.reshape(B,(-1,))
+                a[k],b[k]=A,B
+        else:
+            a, b = torch.rand(batchsize, dist_dim).to(dtypein).to(device), torch.rand(batchsize, dist_dim).to(dtypein).to(device)
         a = a**mult
         b = b**mult
         if remove_zeros:
-            a += 1e-3*torch.ones(a.size()).to(dtypein).to(device)
-            b += 1e-3*torch.ones(b.size()).to(dtypein).to(device)
+            a /= a.sum(1)[:, None]
+            b /= b.sum(1)[:, None]
+            a += 2e-5*torch.ones(a.size()).to(dtypein).to(device)
+            b += 2e-5*torch.ones(b.size()).to(dtypein).to(device)
         a /= a.sum(1)[:, None]
         b /= b.sum(1)[:, None]
         if not sink:
@@ -324,17 +339,33 @@ def generate_simple_data(
             if not len(idx) == batchsize:
                 counter = len(idx)
                 while counter < batchsize:
-                    if not gauss:
-                        a, b = torch.rand(batchsize, dist_dim).to(dtypein).to(device), torch.rand(batchsize, dist_dim).to(dtypein).to(device)
+                    if gauss:
+                        if isinstance(means, list):
+                            gaussian = MultivariateNormal(means[int(i/((n_samples//batchsize)/len(means)))], covs[int(i/((n_samples//batchsize)/len(covs)))])
+                            a, b = gaussian.sample((batchsize,)).abs().to(dtypein).to(device), gaussian.sample((batchsize,)).abs().to(dtypein).to(device)
+                    elif random_shape:
+                        a,b=torch.zeros(batchsize, dist_dim).to(dtypein).to(device), torch.zeros(batchsize, dist_dim).to(dtypein).to(device)
+                        for k in range(batchsize):
+                            A, _ = random_shapes((28, 28), channel_axis=None, max_shapes=20)
+                            B, _ = random_shapes((28, 28), channel_axis=None, max_shapes=20)
+                            A = torch.from_numpy(A).to(dtypein).to(device)
+                            B = torch.from_numpy(B).to(dtypein).to(device)
+                            A=(255-A)/255 
+                            B=(255-B)/255
+                            A=torch.reshape(A,(-1,))
+                            B=torch.reshape(B,(-1,))
+                            a[k],b[k]=A,B
                     else:
-                        a, b = gaussian.sample((batchsize,)).abs().to(dtypein).to(device), gaussian.sample((batchsize,)).abs().to(dtypein).to(device)
-                    a = a**mult
-                    b = b**mult
+                        a, b = torch.rand(batchsize, dist_dim).to(dtypein).to(device), torch.rand(batchsize, dist_dim).to(dtypein).to(device)
+                        a = a**mult
+                        b = b**mult
                     if remove_zeros:
-                        a += 1e-3*torch.ones(a.size()).to(dtypein).to(device)
-                        b += 1e-3*torch.ones(b.size()).to(dtypein).to(device)
-                    a /= a.sum(1)[:, None]
-                    b /= b.sum(1)[:, None]
+                        a /= a.sum(1)[:, None]
+                        b /= b.sum(1)[:, None]
+                        a += 2e-5*torch.ones(a.size()).to(dtypein).to(device)
+                        b += 2e-5*torch.ones(b.size()).to(dtypein).to(device)
+                        a /= a.sum(1)[:, None]
+                        b /= b.sum(1)[:, None]
                     log = (0, sinkhorn(a, b, cost_matrix, eps, max_iter=iters, log=True)) # cast to tuple s.t. this has the same format as the `ot.emd` output.
                     log[1]['cost'] = log[1]['cost'][:, None]
                     idx = torch.tensor([k for k in range(batchsize) if not torch.any(log[1]['u'][k].isnan()) and not log[1]['cost'][k].isnan()]).to(device)
