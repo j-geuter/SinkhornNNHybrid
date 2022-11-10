@@ -3,10 +3,13 @@ import torch
 from torch.optim import Adam
 import torch.nn.functional as F
 import random
-
+import torchvision
+from torchvision.datasets import MNIST, CIFAR10
+from torchvision.transforms import Resize, ToTensor, Compose
+from torch.utils.data import DataLoader
 from networks import FCNN
 from costmatrix import euclidean_cost_matrix
-from datacreation import load_data, data_to_list
+from datacreation import load_data, data_to_list, generate_simple_data, generate_dataset_data
 from utils import compute_c_transform, compute_dual, compute_mean_conf
 
 
@@ -80,7 +83,7 @@ class DualApproximator:
                             verbose = 0,
                             num_tests = 50,
                             test_data = None,
-                            WS_perf = False
+                            WS_perf = True
                         ):
         """
         Learns from data in file 'data_filename' using `loss_function` loss on the dual potential.
@@ -418,18 +421,18 @@ class DualApproximator:
             return (l, ws_list)
         return l
 
-    def trainalot(self, nb_samples = 3e6, max_lr = 0.0005, lr_step = 0.00001, eps = 0.2, iters = 1000):
-        nb_runs = int(nb_samples//1e5)
+    def trainalot(self, nb_samples = 100, max_lr = 0.001, lr_step = 1e8, eps = 0.3, iters = 1000):
+        nb_runs = 10000
         lrs = [max_lr - lr_step*i for i in range(nb_runs)]
-        generate_simple_data('Data/test_file_0.py', length=28, mult=3, n_samples=5000)
-        generate_dataset_data('Data/test_file_1.py', dataloader=DataLoader(MNIST(root='./Data/mnist_dataset', train=False, download=True, transform=torchvision.transforms.ToTensor()), batch_size=10000), train=False, n_samples=5000)
-        generate_dataset_data('Data/test_file_2.py', dataloader=DataLoader(CIFAR10(root='./Data/CIFAR', train=False, download=True, transform=torchvision.transforms.ToTensor()), batch_size=10000), train=False, n_samples=5000)
-        teddies = load_files_quickdraw(categories=1, per_category=10000, rand=False, names=['teddy-bear'], dir='./Data/QuickDraw/')['teddy-bear']
-        teddies = torch.tensor(teddies)
-        generate_dataset_data('Data/test_file_3.py', train=False, n_samples=5000, data=teddies)
-        testdata = [load_data(f'Data/test_file_{i}.py') for i in range(4)]
+        generate_simple_data('Data/test_file_0.py', length=28, n_samples=100)
+        #generate_dataset_data('Data/test_file_1.py', dataloader=DataLoader(MNIST(root='./Data/mnist_dataset', train=False, download=True, transform=torchvision.transforms.ToTensor()), batch_size=10000), train=False, n_samples=5000)
+        #generate_dataset_data('Data/test_file_2.py', dataloader=DataLoader(CIFAR10(root='./Data/CIFAR', train=False, download=True, transform=torchvision.transforms.ToTensor()), batch_size=10000), train=False, n_samples=5000)
+        #teddies = load_files_quickdraw(categories=1, per_category=10000, rand=False, names=['teddy-bear'], dir='./Data/QuickDraw/')['teddy-bear']
+        #teddies = torch.tensor(teddies)
+        #generate_dataset_data('Data/test_file_3.py', train=False, n_samples=5000, data=teddies)
+        testdata = [load_data(f'Data/test_file_{i}.py') for i in range(2)]
         for i in range(nb_runs):
-            generate_simple_data('Data/data.py', length=28, mult=3, sink=True, iters=iters, eps=eps)
+            generate_simple_data('Data/data.py', length=28, sink=True, iters=iters, eps=eps,n_samples = nb_samples)
             data = 'Data/data.py'
             self.lr = lrs[i]
             self.optimizer = Adam(self.net.parameters(), lr=self.lr)
@@ -439,7 +442,6 @@ class DualApproximator:
 
 
 if __name__ == '__main__':
-    length = input("Input width of data: ")
-    length = int(length)
     lr = 0.005
-    d = DualApproximator(length=length, networkclass=FCNN, lr=lr)
+    d = DualApproximator(length=28, networkclass=FCNN, lr=lr)
+    d.trainalot()
