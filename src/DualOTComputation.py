@@ -66,7 +66,7 @@ class DualApproximator:
         """
         Reset the network's parameters to default.
         """
-        for c in d.net.children():
+        for c in self.net.children():
             for l in c:
                 if hasattr(l, 'reset_parameters'):
                     l.reset_parameters()
