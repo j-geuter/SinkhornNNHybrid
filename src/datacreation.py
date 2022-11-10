@@ -373,7 +373,7 @@ def generate_simple_data(
                     b = b.index_select(0, idx)
                     batch = {'d1': torch.cat((a.to(dtypeout), batch['d1']), 0), 'd2': torch.cat((b.to(dtypeout), batch['d2']), 0), 'u': torch.cat((log[1]['u'].to(dtypeout), batch['u']), 0), 'cost': torch.cat((log[1]['cost'].to(dtypeout), batch['cost']), 0)}
             for key in batch.keys():
-                batch[key] = batch[key][:100, :]
+                batch[key] = batch[key][:batchsize, :]
         if center:
             batch['u'] = batch['u'] - batch['u'].sum(1)[:, None]/dist_dim
         dataset.append(batch)
