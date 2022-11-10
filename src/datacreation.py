@@ -293,17 +293,14 @@ def generate_simple_data(
                 gaussian = MultivariateNormal(means[int(i/((n_samples//batchsize)/len(means)))], covs[int(i/((n_samples//batchsize)/len(covs)))])
             a, b = gaussian.sample((batchsize,)).abs().to(dtypein).to(device), gaussian.sample((batchsize,)).abs().to(dtypein).to(device)
         elif random_shape:
-            a,b=torch.zeros(batchsize, dist_dim).to(dtypein).to(device), torch.zeros(batchsize, dist_dim).to(dtypein).to(device)
-            for k in range(batchsize):
-                A, _ = random_shapes((28, 28), channel_axis=None, max_shapes=20)
-                B, _ = random_shapes((28, 28), channel_axis=None, max_shapes=20)
-                A = torch.from_numpy(A).to(dtypein).to(device)
-                B = torch.from_numpy(B).to(dtypein).to(device)
-                A = (255-A)/255
-                B = (255-B)/255
-                A = torch.reshape(A,(-1,))
-                B = torch.reshape(B,(-1,))
-                a[k], b[k] = A, B
+            a = np.concatenate([np.expand_dims(random_shapes((length, length), channel_axis=None, max_shapes=20)[0], 0) for k in range(batchsize)])
+            b = np.concatenate([np.expand_dims(random_shapes((length, length), channel_axis=None, max_shapes=20)[0], 0) for k in range(batchsize)])
+            a = torch.from_numpy(a).to(dtypein).to(device)
+            b = torch.from_numpy(b).to(dtypein).to(device)
+            a = (255-a)/255
+            b = (255-b)/255
+            a = a.reshape(batchsize, dist_dim)
+            b = b.reshape(batchsize, dist_dim)
         else:
             a, b = torch.rand(batchsize, dist_dim).to(dtypein).to(device), torch.rand(batchsize, dist_dim).to(dtypein).to(device)
         a = a**mult
@@ -344,17 +341,14 @@ def generate_simple_data(
                             gaussian = MultivariateNormal(means[int(i/((n_samples//batchsize)/len(means)))], covs[int(i/((n_samples//batchsize)/len(covs)))])
                             a, b = gaussian.sample((batchsize,)).abs().to(dtypein).to(device), gaussian.sample((batchsize,)).abs().to(dtypein).to(device)
                     elif random_shape:
-                        a, b = torch.zeros(batchsize, dist_dim).to(dtypein).to(device), torch.zeros(batchsize, dist_dim).to(dtypein).to(device)
-                        for k in range(batchsize):
-                            A, _ = random_shapes((28, 28), channel_axis=None, max_shapes=20)
-                            B, _ = random_shapes((28, 28), channel_axis=None, max_shapes=20)
-                            A = torch.from_numpy(A).to(dtypein).to(device)
-                            B = torch.from_numpy(B).to(dtypein).to(device)
-                            A = (255-A)/255
-                            B = (255-B)/255
-                            A = torch.reshape(A,(-1,))
-                            B = torch.reshape(B,(-1,))
-                            a[k], b[k] = A, B
+                        a = np.concatenate([np.expand_dims(random_shapes((length, length), channel_axis=None, max_shapes=20)[0], 0) for k in range(batchsize)])
+                        b = np.concatenate([np.expand_dims(random_shapes((length, length), channel_axis=None, max_shapes=20)[0], 0) for k in range(batchsize)])
+                        a = torch.from_numpy(a).to(dtypein).to(device)
+                        b = torch.from_numpy(b).to(dtypein).to(device)
+                        a = (255-a)/255
+                        b = (255-b)/255
+                        a = a.reshape(batchsize, dist_dim)
+                        b = b.reshape(batchsize, dist_dim)
                     else:
                         a, b = torch.rand(batchsize, dist_dim).to(dtypein).to(device), torch.rand(batchsize, dist_dim).to(dtypein).to(device)
                         a = a**mult
