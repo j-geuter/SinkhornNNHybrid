@@ -299,11 +299,11 @@ def generate_simple_data(
                 B, _ = random_shapes((28, 28), channel_axis=None, max_shapes=20)
                 A = torch.from_numpy(A).to(dtypein).to(device)
                 B = torch.from_numpy(B).to(dtypein).to(device)
-                A=(255-A)/255 
-                B=(255-B)/255
-                A=torch.reshape(A,(-1,))
-                B=torch.reshape(B,(-1,))
-                a[k],b[k]=A,B
+                A = (255-A)/255
+                B = (255-B)/255
+                A = torch.reshape(A,(-1,))
+                B = torch.reshape(B,(-1,))
+                a[k], b[k] = A, B
         else:
             a, b = torch.rand(batchsize, dist_dim).to(dtypein).to(device), torch.rand(batchsize, dist_dim).to(dtypein).to(device)
         a = a**mult
@@ -344,17 +344,17 @@ def generate_simple_data(
                             gaussian = MultivariateNormal(means[int(i/((n_samples//batchsize)/len(means)))], covs[int(i/((n_samples//batchsize)/len(covs)))])
                             a, b = gaussian.sample((batchsize,)).abs().to(dtypein).to(device), gaussian.sample((batchsize,)).abs().to(dtypein).to(device)
                     elif random_shape:
-                        a,b=torch.zeros(batchsize, dist_dim).to(dtypein).to(device), torch.zeros(batchsize, dist_dim).to(dtypein).to(device)
+                        a, b = torch.zeros(batchsize, dist_dim).to(dtypein).to(device), torch.zeros(batchsize, dist_dim).to(dtypein).to(device)
                         for k in range(batchsize):
                             A, _ = random_shapes((28, 28), channel_axis=None, max_shapes=20)
                             B, _ = random_shapes((28, 28), channel_axis=None, max_shapes=20)
                             A = torch.from_numpy(A).to(dtypein).to(device)
                             B = torch.from_numpy(B).to(dtypein).to(device)
-                            A=(255-A)/255 
-                            B=(255-B)/255
-                            A=torch.reshape(A,(-1,))
-                            B=torch.reshape(B,(-1,))
-                            a[k],b[k]=A,B
+                            A = (255-A)/255
+                            B = (255-B)/255
+                            A = torch.reshape(A,(-1,))
+                            B = torch.reshape(B,(-1,))
+                            a[k], b[k] = A, B
                     else:
                         a, b = torch.rand(batchsize, dist_dim).to(dtypein).to(device), torch.rand(batchsize, dist_dim).to(dtypein).to(device)
                         a = a**mult
@@ -364,8 +364,8 @@ def generate_simple_data(
                         b /= b.sum(1)[:, None]
                         a += 2e-5*torch.ones(a.size()).to(dtypein).to(device)
                         b += 2e-5*torch.ones(b.size()).to(dtypein).to(device)
-                        a /= a.sum(1)[:, None]
-                        b /= b.sum(1)[:, None]
+                    a /= a.sum(1)[:, None]
+                    b /= b.sum(1)[:, None]
                     log = (0, sinkhorn(a, b, cost_matrix, eps, max_iter=iters, log=True)) # cast to tuple s.t. this has the same format as the `ot.emd` output.
                     log[1]['cost'] = log[1]['cost'][:, None]
                     idx = torch.tensor([k for k in range(batchsize) if not torch.any(log[1]['u'][k].isnan()) and not log[1]['cost'][k].isnan()]).to(device)
