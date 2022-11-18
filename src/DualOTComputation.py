@@ -49,6 +49,7 @@ class DualApproximator:
             self.net.load_state_dict(torch.load(model))
         self.net.to(device)
         self.gen_net = genNet(length*length)
+        self.gen_net.to(device)
         self.lr = lr
         self.gen_lr = gen_lr
         self.optimizer = Adam(self.net.parameters(), lr=lr)
