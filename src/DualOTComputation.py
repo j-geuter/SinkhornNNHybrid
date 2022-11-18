@@ -157,7 +157,7 @@ class DualApproximator:
                     loss.backward()
                     self.optimizer.step()
 
-            x = self.gen_net(x_0)
+            x = self.gen_net(x_0).to(torch.float32)
             out = self.net(x)
             self.gen_optimizer.zero_grad()
             gen_loss = - loss_function(out, pot)
