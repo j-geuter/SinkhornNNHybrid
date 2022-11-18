@@ -5,7 +5,6 @@ import torch.nn.functional as F
 import random
 from torch.distributions.multivariate_normal import MultivariateNormal
 import ot
-from torch.multiprocessing import Pool, set_start_method
 
 
 from networks import FCNN, genNet
@@ -15,8 +14,6 @@ from utils import compute_c_transform, compute_dual, compute_mean_conf
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-set_start_method('spawn')
 
 def loss_max_ws(t, t2):
     """
@@ -143,12 +140,6 @@ class DualApproximator:
             x_0 = prior.sample((batchsize,)).to(device)
 
             x = self.gen_net(x_0).detach()
-
-            with Pool() as p:
-                pot = p.starmap(ot.emd, [(x[k][:dim], x[k][dim:], self.costmatrix, 100000, True) for k in range(batchsize)])
-            pot = [el[1]['u'][None, :].to(torch.float32).to(device) for el in pot]
-            pot = torch.cat((pot), 0)
-
 
             pot = ot.emd(x[0][:dim], x[0][dim:], self.costmatrix, log=True)[1]['u']
             pot = pot[None, :].to(torch.float32).to(device)
