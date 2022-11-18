@@ -3,8 +3,10 @@ import torch
 from torch.optim import Adam
 import torch.nn.functional as F
 import random
+from torch.distributions.multivariate_normal import MultivariateNormal
+import ot
 
-from networks import FCNN
+from networks import FCNN, genNet
 from costmatrix import euclidean_cost_matrix
 from datacreation import load_data, data_to_list
 from utils import compute_c_transform, compute_dual, compute_mean_conf
@@ -28,39 +30,46 @@ class DualApproximator:
     def __init__(
                     self,
                     length,
-                    networkclass = FCNN,
-                    lr = 0.005,
+                    lr = 0.001,
+                    gen_lr = 0.005,
                     exponent = 2,
                     model = None
                 ):
         """
         Creates an agent that learns the dual potential function.
         :param length: width and height dimension of the data. Dimension of the distribution is length*length.
-        :param networkclass: class used for the neural network.
+        :param lr: learning rate.
+        :param gen_lr: generative model learning rate.
         :param exponent: exponent with which the euclidean distance can be exponentiated.
         :param model: Optional path to a torch model to be loaded.
         """
         self.length = length
-        self.net = networkclass(length*length)
+        self.net = FCNN(length*length)
         if model != None:
             self.net.load_state_dict(torch.load(model))
         self.net.to(device)
+        self.gen_net = genNet(length*length)
         self.lr = lr
+        self.gen_lr = gen_lr
         self.optimizer = Adam(self.net.parameters(), lr=lr)
+        self.gen_optimizer = Adam(self.gen_net.parameters(), lr=gen_lr)
         self.costmatrix = torch.tensor(euclidean_cost_matrix(length, length, exponent)).to(device)
         self.parnumber = sum(p.numel() for p in self.net.parameters())
+        self.gen_parnumber = sum(p.numel() for p in self.gen_net.parameters())
 
-    def load(self, path):
+    def load(self, path1, path2):
         """
-        Loads a model saved in `path`.
+        Loads a model saved in `path1` and `path2`.
         """
-        self.net.load_state_dict(torch.load(path))
+        self.net.load_state_dict(torch.load(path1))
+        self.gen_net.load_state_dict(torch.load(path2))
 
-    def save(self, path):
+    def save(self, path1, path2):
         """
-        Saves the current model in `path`.
+        Saves the current model in `path1` and `path2`.
         """
-        torch.save(self.net.state_dict(),path)
+        torch.save(self.net.state_dict(), path1)
+        torch.save(self.gen_net.state_dict(), path2)
 
     def reset_params(self):
         """
@@ -70,13 +79,18 @@ class DualApproximator:
             for l in c:
                 if hasattr(l, 'reset_parameters'):
                     l.reset_parameters()
+        for c in self.gen_net.children():
+            for l in c:
+                if hasattr(l, 'reset_parameters'):
+                    l.reset_parameters()
 
     def learn_potential(
                             self,
-                            data_filename,
+                            n_samples,
                             loss_function = F.mse_loss,
-                            epochs = 1,
-                            batchsize = 100,
+                            epochs = 5,
+                            batchsize = 1000,
+                            minibatch = 100,
                             verbose = 0,
                             num_tests = 50,
                             test_data = None,
@@ -84,16 +98,19 @@ class DualApproximator:
                         ):
         """
         Learns from data in file 'data_filename' using `loss_function` loss on the dual potential.
-        :param data_filename: file with training data.
+        :param n_samples: number of unique samples to train on.
         :param loss_function: loss function to be used in backpropagation.
-        :param epochs: number of epochs performed on data.
+        :param epochs: number of epochs performed on data. Total number of training samples equals `n_samples`*`epochs`.
         :param batchsize: batch size used in all epochs.
+        :param minibatch: size of minibatch for each gradient step. Each batch is split into multiple minibatches.
         :param verbose: if >0, collects performance information and returns it after the last epoch.
         :param num_tests: number of times test data is collected if `verbose` >= 2.
         :param test_data: list of test data used for testing if verbose is True. Can contain various test data sets. If only one test data set is given, it needs to be nested into a 1-element list.
         :param WS_perf: if True, also collects performance on Wasserstein distance calculation in addition to potential approximation.
         :return: dict with key 'pot', and also 'WS' if `WS_perf`==True. At each key is a list containing a list for each test dataset in `test_data`. Each list contains information on the respective error (MSE on potential resp. L1 on Wasserstein distance) over the course of learning.
         """
+        dim = self.length*self.length
+        prior = MultivariateNormal(torch.zeros(2*dim), torch.eye(2*dim))
         if test_data == None: # we oftentimes have a variable 'testdata' predefined.
             try:
                 test_data = testdata
@@ -103,7 +120,6 @@ class DualApproximator:
             test_nb = len(test_data)
         else:
             test_nb = 0
-        dataset = data_to_list(data_filename)
         if WS_perf:
             performance = {'WS': [[] for i in range(test_nb)], 'pot': [[] for i in range(test_nb)]}
         else:
@@ -115,34 +131,51 @@ class DualApproximator:
                 for j in range(test_nb):
                     performance['WS'][j].append(self.test_ws(test_data[j]))
         self.net.train()
-        if verbose >=2 and (dataset['d1'].size(0)//(num_tests * batchsize)) == 0:
-            verbose = 1
-        for e in range(epochs):
-            perm = torch.randperm(dataset['d1'].size(0)).to(device)
-            for key in dataset.keys():
-                dataset[key] = dataset[key][perm]
-            for i in tqdm(range(dataset['d1'].size(0)//batchsize)):
-                d1 = dataset['d1'][i*batchsize:(i+1)*batchsize]
-                d2 = dataset['d2'][i*batchsize:(i+1)*batchsize]
-                x = torch.cat((d1, d2), 1).to(device)
-                out = self.net(x)
-                self.optimizer.zero_grad()
-                loss = loss_function(out, dataset['u'][i*batchsize:(i+1)*batchsize])
-                loss.backward()
-                self.optimizer.step()
-                if verbose >= 2 and i % (dataset['d1'].size(0)//(num_tests * batchsize)) == 0 and i > 0:
-                    if WS_perf:
-                        for j in range(test_nb):
-                            performance['WS'][j].append(self.test_ws(test_data[j]))
-                    for j in range(test_nb):
-                        performance['pot'][j].append(self.test_potential(test_data[j]))
-                    self.net.train()
-            if verbose == 1:
+        self.gen_net.train()
+
+        for i in tqdm(range(n_samples//batchsize)):
+
+            x_0 = prior.sample((batchsize,)).to(device)
+
+            x = self.gen_net(x_0).detach()
+
+            pot = ot.emd(x[0][:dim], x[0][dim:], self.costmatrix, log=True)[1]['u']
+            pot = pot[None, :].to(torch.float32).to(device)
+            for k in range(1, batchsize):
+                log = ot.emd(x[k][:dim], x[k][dim:], self.costmatrix, log=True)[1]
+                pot = torch.cat((pot, log['u'][None, :].to(torch.float32).to(device)), 0)
+            x = x.to(torch.float32)
+
+            for e in range(epochs):
+                perm = torch.randperm(batchsize).to(device)
+                x, pot = x[perm], pot[perm]
+                for j in range(batchsize//minibatch):
+                    out = self.net(x[j*minibatch:(j+1)*minibatch])
+                    self.optimizer.zero_grad()
+                    loss = loss_function(out, pot[j*minibatch:(j+1)*minibatch])
+                    loss.backward()
+                    self.optimizer.step()
+
+            x = self.gen_net(x_0)
+            out = self.net(x)
+            self.gen_optimizer.zero_grad()
+            gen_loss = - loss_function(out, pot)
+            gen_loss.backward()
+            self.gen_optimizer.step()
+
+            if verbose >= 2 and i % (n_samples//(num_tests * batchsize)) == 0 and i > 0:
                 if WS_perf:
                     for j in range(test_nb):
                         performance['WS'][j].append(self.test_ws(test_data[j]))
                 for j in range(test_nb):
                     performance['pot'][j].append(self.test_potential(test_data[j]))
+                self.net.train()
+        if verbose == 1:
+            if WS_perf:
+                for j in range(test_nb):
+                    performance['WS'][j].append(self.test_ws(test_data[j]))
+            for j in range(test_nb):
+                performance['pot'][j].append(self.test_potential(test_data[j]))
         if verbose >= 1:
             return performance
 
@@ -424,4 +457,4 @@ if __name__ == '__main__':
     length = input("Input width of data: ")
     length = int(length)
     lr = 0.005
-    d = DualApproximator(length=length, networkclass=FCNN, lr=lr)
+    d = DualApproximator(length=length, lr=lr)

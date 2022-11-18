@@ -62,3 +62,41 @@ class FCNN(nn.Module):
         if self.zerosum:
             x = x - x.sum(1)[:,None]/self.dim
         return x
+
+class genNet(nn.Module):
+    """
+    Network that generates new data samples from given samples.
+    """
+    def __init__(self, dim):
+        """
+        :param dim: dimension of each of the input distributions. Results in 2*`dim` dimensional input.
+        """
+        super(genNet, self).__init__()
+        self.dim = dim
+        self.l1 = nn.Sequential(
+            nn.Linear(2*dim, 4*dim),
+            nn.BatchNorm1d(4*dim),
+            nn.ReLU(),
+            )
+        self.l2 = nn.Sequential(
+            nn.Linear(4*dim, 4*dim),
+            nn.BatchNorm1d(4*dim),
+            nn.ReLU(),
+            )
+        self.l3 = nn.Sequential(
+            nn.Linear(4*dim, 2*dim),
+            nn.ReLU(),
+            )
+        self.layers = [
+            self.l1,
+            self.l2,
+            self.l3
+        ]
+
+    def forward(self, x):
+        for l in self.layers:
+            x = l(x)
+        x = x.to(torch.float64)
+        x[:, :self.dim] /=  x[:, :self.dim].sum(1)[:, None]
+        x[:, self.dim:] /=  x[:, self.dim:].sum(1)[:, None]
+        return x
