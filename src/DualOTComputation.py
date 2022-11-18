@@ -5,6 +5,7 @@ import torch.nn.functional as F
 import random
 from torch.distributions.multivariate_normal import MultivariateNormal
 import ot
+from multiprocessing import Pool
 
 
 from networks import FCNN, genNet
@@ -140,6 +141,12 @@ class DualApproximator:
             x_0 = prior.sample((batchsize,)).to(device)
 
             x = self.gen_net(x_0).detach()
+
+            with Pool() as p:
+                pot = p.starmap(ot.emd, [(x[k][:dim], x[k][dim:], self.costmatrix, 100000, True) for k in range(batchsize)])
+            pot = [el[1]['u'][None, :].to(torch.float32).to(device) for el in pot]
+            pot = torch.cat((pot), 0)
+
 
             pot = ot.emd(x[0][:dim], x[0][dim:], self.costmatrix, log=True)[1]['u']
             pot = pot[None, :].to(torch.float32).to(device)
