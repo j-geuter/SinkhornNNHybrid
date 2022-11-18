@@ -6,6 +6,7 @@ import random
 from torch.distributions.multivariate_normal import MultivariateNormal
 import ot
 
+
 from networks import FCNN, genNet
 from costmatrix import euclidean_cost_matrix
 from datacreation import load_data, data_to_list
@@ -160,7 +161,8 @@ class DualApproximator:
             x = self.gen_net(x_0).to(torch.float32)
             out = self.net(x)
             self.gen_optimizer.zero_grad()
-            gen_loss = - loss_function(out, pot)
+            self.optimizer.zero_grad()
+            gen_loss = -loss_function(out, pot)
             gen_loss.backward()
             self.gen_optimizer.step()
 
