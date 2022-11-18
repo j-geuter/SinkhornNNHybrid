@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import random
 from torch.distributions.multivariate_normal import MultivariateNormal
 import ot
-from multiprocessing import Pool
+from torch.multiprocessing import Pool, set_start_method
 
 
 from networks import FCNN, genNet
@@ -15,6 +15,8 @@ from utils import compute_c_transform, compute_dual, compute_mean_conf
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+set_start_method('spawn')
 
 def loss_max_ws(t, t2):
     """
