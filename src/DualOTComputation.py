@@ -89,7 +89,7 @@ class DualApproximator:
                             n_samples,
                             loss_function = F.mse_loss,
                             epochs = 5,
-                            batchsize = 1000,
+                            batchsize = 300,
                             minibatch = 100,
                             verbose = 0,
                             num_tests = 50,
