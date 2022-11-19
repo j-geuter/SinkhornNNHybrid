@@ -114,8 +114,7 @@ class DualApproximator:
                             learn_gen = 10,
                             prints = False
                         ):
-        """,
-            self.l2
+        """
         Learns from data in file 'data_filename' using `loss_function` loss on the dual potential.
         :param n_samples: number of unique samples to train on.
         :param loss_function: loss function to be used in backpropagation.
@@ -181,17 +180,18 @@ class DualApproximator:
             if learn_gen != False and i % learn_gen == 0:
                 x_gen = self.gen_net(x_0)
                 x_gen = x_gen.to(torch.float32)
-                grad = torch.autograd.grad(x_gen, x_0)[0]
-                penalty = 0.1 * grad**2.sum()
-                out = self.net(x_gen)
-                self.gen_optimizer.zero_grad()
-                #self.optimizer.zero_grad()
-                gen_loss = -loss_function(out, pot)
-                if prints:
-                    print("gen_net loss, i="+str(i)+", gen_loss="+str(gen_loss.item()))
-                    visualize_data(torch.cat((x_gen.detach().cpu()[:1, :196], x_gen.detach().cpu()[:1, 196:]), 0), 1, 2)
-                gen_loss.backward()
-                self.gen_optimizer.step()
+                #grad = torch.autograd.grad(x_gen, x_0)[0]
+                #penalty = 0.1 * grad**2.sum()
+                for j in range(batchsize//minibatch):
+                    out = self.net(x_gen[j*minibatch:(j+1)*minibatch])
+                    self.gen_optimizer.zero_grad()
+                    #self.optimizer.zero_grad()
+                    gen_loss = -loss_function(out, pot[j*minibatch:(j+1)*minibatch])
+                    if prints:
+                        print("gen_net loss, i="+str(i)+", gen_loss="+str(gen_loss.item()))
+                        visualize_data(torch.cat((x_gen.detach().cpu()[:1, :196], x_gen.detach().cpu()[:1, 196:]), 0), 1, 2)
+                    gen_loss.backward()
+                    self.gen_optimizer.step()
 
             if verbose >= 2 and i % (n_samples//(num_tests * batchsize)) == 0 and i > 0:
                 if WS_perf:
