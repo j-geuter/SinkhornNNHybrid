@@ -79,7 +79,7 @@ class genNet(nn.Module):
             nn.ReLU(),
             )
         self.l2 = nn.Sequential(
-            nn.Conv2d(2, 2, kernel_size=3, padding=1),
+            nn.Linear(2*dim, 2*dim),
             nn.ReLU(),
             )
         self.l3 = nn.Sequential(
@@ -88,15 +88,14 @@ class genNet(nn.Module):
             nn.ReLU(),
             )
         self.layers = [
-            self.l1,
             self.l2
         ]
 
     def forward(self, x):
-        x = x.reshape(x.size(0), 2, self.length, self.length)
+        #x = x.reshape(x.size(0), 2, self.length, self.length)
         for l in self.layers:
             x = l(x)
-        x = x.reshape(x.size(0), 2*self.dim)
+        #x = x.reshape(x.size(0), 2*self.dim)
         x = self.l3(x)
         x = x.to(torch.float64)
         x += 1e-2
