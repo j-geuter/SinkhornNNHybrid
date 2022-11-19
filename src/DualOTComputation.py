@@ -186,7 +186,7 @@ class DualApproximator:
                 gen_loss = -loss_function(out, pot)
                 if prints:
                     print("gen_net loss, i="+str(i)+", gen_loss="+str(gen_loss.item()))
-                    visualize_data(x_0.detach().cpu()[:5, :196])
+                    visualize_data(x_0.detach().cpu()[:1, :196])
                 gen_loss.backward()
                 self.gen_optimizer.step()
 

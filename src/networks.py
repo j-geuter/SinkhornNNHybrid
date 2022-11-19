@@ -88,6 +88,7 @@ class genNet(nn.Module):
             )
         self.l4 = nn.Sequential(
             nn.Linear(2*dim, 2*dim),
+            nn.ReLU(),
             )
         self.layers = [
             self.l1,
