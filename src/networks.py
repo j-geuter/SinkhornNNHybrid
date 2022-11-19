@@ -84,7 +84,7 @@ class genNet(nn.Module):
             nn.ReLU(),
             )
         self.l3 = nn.Sequential(
-            nn.Linear(2*dim, 2*dim),
+            #nn.Linear(2*dim, 2*dim),
             nn.ReLU(),
             )
         self.layers = [
@@ -92,8 +92,8 @@ class genNet(nn.Module):
         ]
 
     def forward(self, x):
-        '''for l in self.layers:
-            x = l(x)'''
+        for l in self.layers:
+            x = l(x)
         x = x.to(torch.float64)
         x += 1e-2
         x[:, :self.dim] /=  x[:, :self.dim].sum(1)[:, None]
