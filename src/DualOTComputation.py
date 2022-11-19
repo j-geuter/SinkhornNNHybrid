@@ -190,7 +190,7 @@ class DualApproximator:
                     if prints:
                         print("gen_net loss, i="+str(i)+", gen_loss="+str(gen_loss.item()))
                         visualize_data(torch.cat((x_gen.detach().cpu()[:1, :196], x_gen.detach().cpu()[:1, 196:]), 0), 1, 2)
-                    gen_loss.backward()
+                    gen_loss.backward(retain_grad=True)
                     self.gen_optimizer.step()
 
             if verbose >= 2 and i % (n_samples//(num_tests * batchsize)) == 0 and i > 0:
