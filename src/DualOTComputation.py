@@ -178,8 +178,15 @@ class DualApproximator:
                     self.optimizer.step()
 
             if learn_gen != False and i % learn_gen == 0:
-                x = self.gen_net(x_0).to(torch.float32)
-                out = self.net(x)
+                x_0 = self.gen_net(x_0)
+                x = x_0.detach().clone()
+                pot = ot.emd(x[0][:dim], x[0][dim:], self.costmatrix, log=True)[1]['u']
+                pot = pot[None, :].to(torch.float32).to(device)
+                for k in range(1, batchsize):
+                    log = ot.emd(x[k][:dim], x[k][dim:], self.costmatrix, log=True)[1]
+                    pot = torch.cat((pot, log['u'][None, :].to(torch.float32).to(device)), 0)
+                x_0 = x_0.to(torch.float32)
+                out = self.net(x_0)
                 self.gen_optimizer.zero_grad()
                 #self.optimizer.zero_grad()
                 gen_loss = -loss_function(out, pot)
