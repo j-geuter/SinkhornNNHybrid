@@ -78,13 +78,8 @@ class genNet(nn.Module):
             nn.Linear(70, 2*dim),
             nn.ReLU(),
             )
-        self.l2 = nn.Sequential(
-            nn.Linear(2*dim, 2*dim),
-            nn.ReLU(),
-            )
         self.layers = [
-            self.l1,
-            self.l2
+            self.l1
         ]
 
     def forward(self, x):
