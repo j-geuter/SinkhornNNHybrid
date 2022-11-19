@@ -73,6 +73,7 @@ class genNet(nn.Module):
         """
         super(genNet, self).__init__()
         self.dim = dim
+        self.length = int(math.sqrt(self.dim))
         self.l1 = nn.Sequential(
             nn.Linear(2*dim, 4*dim),
             nn.BatchNorm1d(4*dim),
@@ -93,6 +94,7 @@ class genNet(nn.Module):
         ]
 
     def forward(self, x):
+        x = x.resize(x.size(0), self.length, self.length)
         x = x.unsqueeze(1)
         for l in self.layers:
             x = l(x)
