@@ -96,7 +96,8 @@ class DualApproximator:
                             verbose = 0,
                             num_tests = 50,
                             test_data = None,
-                            WS_perf = False
+                            WS_perf = False,
+                            learn_gen = True
                         ):
         """
         Learns from data in file 'data_filename' using `loss_function` loss on the dual potential.
@@ -109,6 +110,7 @@ class DualApproximator:
         :param num_tests: number of times test data is collected if `verbose` >= 2.
         :param test_data: list of test data used for testing if verbose is True. Can contain various test data sets. If only one test data set is given, it needs to be nested into a 1-element list.
         :param WS_perf: if True, also collects performance on Wasserstein distance calculation in addition to potential approximation.
+        :param learn_gen: if False, the generating net does not learn.
         :return: dict with key 'pot', and also 'WS' if `WS_perf`==True. At each key is a list containing a list for each test dataset in `test_data`. Each list contains information on the respective error (MSE on potential resp. L1 on Wasserstein distance) over the course of learning.
         """
         dim = self.length*self.length
@@ -158,13 +160,14 @@ class DualApproximator:
                     loss.backward()
                     self.optimizer.step()
 
-            x = self.gen_net(x_0).to(torch.float32)
-            out = self.net(x)
-            self.gen_optimizer.zero_grad()
-            #self.optimizer.zero_grad()
-            gen_loss = -loss_function(out, pot)
-            gen_loss.backward()
-            self.gen_optimizer.step()
+            if learn_gen:
+                x = self.gen_net(x_0).to(torch.float32)
+                out = self.net(x)
+                self.gen_optimizer.zero_grad()
+                #self.optimizer.zero_grad()
+                gen_loss = -loss_function(out, pot)
+                gen_loss.backward()
+                self.gen_optimizer.step()
 
             if verbose >= 2 and i % (n_samples//(num_tests * batchsize)) == 0 and i > 0:
                 if WS_perf:
