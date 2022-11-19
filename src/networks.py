@@ -94,10 +94,10 @@ class genNet(nn.Module):
         ]
 
     def forward(self, x):
-        x = x.resize(x.size(0), 2, self.length, self.length)
+        x = x.reshape(x.size(0), 2, self.length, self.length)
         for l in self.layers:
             x = l(x)
-        x = x.resize(x.size(0), 2*self.dim)
+        x = x.reshape(x.size(0), 2*self.dim)
         x = x.to(torch.float64)
         x += 1e-2
         x[:, :self.dim] /=  x[:, :self.dim].sum(1)[:, None]
