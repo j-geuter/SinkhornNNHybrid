@@ -97,10 +97,10 @@ class genNet(nn.Module):
         ]
 
     def forward(self, x):
-        #x = x.reshape(x.size(0), 2, self.length, self.length)
-        #for l in self.layers:
-        #    x = l(x)
-        #x = x.reshape(x.size(0), 2*self.dim)
+        x = x.reshape(x.size(0), 2, self.length, self.length)
+        for l in self.layers:
+            x = l(x)
+        x = x.reshape(x.size(0), 2*self.dim)
         x = self.l4(x)
         x = x.to(torch.float64)
         x += 1e-2
