@@ -93,8 +93,10 @@ class genNet(nn.Module):
         ]
 
     def forward(self, x):
+        x = x.unsqueeze(1)
         for l in self.layers:
             x = l(x)
+        x = x.squeeze()
         x = x.to(torch.float64)
         x += 1e-2
         x[:, :self.dim] /=  x[:, :self.dim].sum(1)[:, None]
