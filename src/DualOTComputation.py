@@ -129,7 +129,7 @@ class DualApproximator:
         :return: dict with key 'pot', and also 'WS' if `WS_perf`==True. At each key is a list containing a list for each test dataset in `test_data`. Each list contains information on the respective error (MSE on potential resp. L1 on Wasserstein distance) over the course of learning.
         """
         dim = self.length*self.length
-        prior = MultivariateNormal(torch.zeros(40), torch.eye(40))
+        prior = MultivariateNormal(torch.zeros(10), torch.eye(10))
         if test_data == None: # we oftentimes have a variable 'testdata' predefined.
             try:
                 test_data = testdata

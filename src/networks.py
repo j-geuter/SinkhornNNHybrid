@@ -87,7 +87,7 @@ class genNet(nn.Module):
             nn.ReLU(),
             )
         self.l4 = nn.Sequential(
-            nn.Linear(40, 2*dim),
+            nn.Linear(10, 2*dim),
             nn.ReLU(),
             )
         self.l5 = nn.Sequential(
