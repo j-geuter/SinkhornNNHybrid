@@ -75,12 +75,24 @@ class DualApproximator:
 
     def reset_params(self):
         """
-        Reset the network's parameters to default.
+        Reset both network's parameters to default.
+        """
+        self.reset_net()
+        self.reset_gen_net()
+
+    def reset_net(self):
+        """
+        Resets only the `net` parameters.
         """
         for c in self.net.children():
             for l in c:
                 if hasattr(l, 'reset_parameters'):
                     l.reset_parameters()
+
+    def reset_gen_net(self):
+        """
+        Resets only the `gen_net` parameters.
+        """
         for c in self.gen_net.children():
             for l in c:
                 if hasattr(l, 'reset_parameters'):
@@ -97,7 +109,7 @@ class DualApproximator:
                             num_tests = 50,
                             test_data = None,
                             WS_perf = False,
-                            learn_gen = True
+                            learn_gen = 10
                         ):
         """
         Learns from data in file 'data_filename' using `loss_function` loss on the dual potential.
@@ -110,7 +122,7 @@ class DualApproximator:
         :param num_tests: number of times test data is collected if `verbose` >= 2.
         :param test_data: list of test data used for testing if verbose is True. Can contain various test data sets. If only one test data set is given, it needs to be nested into a 1-element list.
         :param WS_perf: if True, also collects performance on Wasserstein distance calculation in addition to potential approximation.
-        :param learn_gen: if False, the generating net does not learn.
+        :param learn_gen: in every `learn_gen`th iteration, the generating net will be updated.
         :return: dict with key 'pot', and also 'WS' if `WS_perf`==True. At each key is a list containing a list for each test dataset in `test_data`. Each list contains information on the respective error (MSE on potential resp. L1 on Wasserstein distance) over the course of learning.
         """
         dim = self.length*self.length
@@ -160,7 +172,7 @@ class DualApproximator:
                     loss.backward()
                     self.optimizer.step()
 
-            if learn_gen:
+            if i % learn_gen == 0:
                 x = self.gen_net(x_0).to(torch.float32)
                 out = self.net(x)
                 self.gen_optimizer.zero_grad()
