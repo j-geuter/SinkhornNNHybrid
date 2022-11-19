@@ -10,7 +10,7 @@ import ot
 from networks import FCNN, genNet
 from costmatrix import euclidean_cost_matrix
 from datacreation import load_data, data_to_list
-from utils import compute_c_transform, compute_dual, compute_mean_conf
+from utils import compute_c_transform, compute_dual, compute_mean_conf, visualize_data
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -186,6 +186,7 @@ class DualApproximator:
                 gen_loss = -loss_function(out, pot)
                 if prints:
                     print("gen_net loss, i="+str(i)+", gen_loss="+str(gen_loss.item()))
+                    visualize_data(x_0[:5, :196])
                 gen_loss.backward()
                 self.gen_optimizer.step()
 
