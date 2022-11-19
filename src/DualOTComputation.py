@@ -111,7 +111,8 @@ class DualApproximator:
                             num_tests = 50,
                             test_data = None,
                             WS_perf = False,
-                            learn_gen = 10
+                            learn_gen = 10,
+                            prints = False
                         ):
         """
         Learns from data in file 'data_filename' using `loss_function` loss on the dual potential.
@@ -171,6 +172,8 @@ class DualApproximator:
                     out = self.net(x[j*minibatch:(j+1)*minibatch])
                     self.optimizer.zero_grad()
                     loss = loss_function(out, pot[j*minibatch:(j+1)*minibatch])
+                    if prints:
+                        print(f'net loss, {j=}: {loss=}')
                     loss.backward()
                     self.optimizer.step()
 
@@ -180,6 +183,8 @@ class DualApproximator:
                 self.gen_optimizer.zero_grad()
                 #self.optimizer.zero_grad()
                 gen_loss = -loss_function(out, pot)
+                if prints:
+                    print(f'gen_net loss, {i=}: {gen_loss=}')
                 gen_loss.backward()
                 self.gen_optimizer.step()
 
