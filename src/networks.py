@@ -95,8 +95,8 @@ class genNet(nn.Module):
         #for l in self.layers:
         #    x = l(x)
         x = x.to(torch.float64)
-        #x += 1e-2
         x = x.abs()
+        x += 1e-2
         x[:, :self.dim] /=  x[:, :self.dim].sum(1)[:, None]
         x[:, self.dim:] /=  x[:, self.dim:].sum(1)[:, None]
         return x
