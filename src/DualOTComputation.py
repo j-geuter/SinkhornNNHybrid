@@ -167,11 +167,11 @@ class DualApproximator:
 
             for e in range(epochs):
                 perm = torch.randperm(batchsize).to(device)
-                x, pot = x[perm], pot[perm]
+                x_curr, pot_curr = x[perm], pot[perm]
                 for j in range(batchsize//minibatch):
-                    out = self.net(x[j*minibatch:(j+1)*minibatch])
+                    out = self.net(x_curr[j*minibatch:(j+1)*minibatch])
                     self.optimizer.zero_grad()
-                    loss = loss_function(out, pot[j*minibatch:(j+1)*minibatch])
+                    loss = loss_function(out, pot_curr[j*minibatch:(j+1)*minibatch])
                     if prints:
                         print("net loss, j="+str(j)+", loss="+str(loss.item()))
                     loss.backward()
