@@ -173,7 +173,7 @@ class DualApproximator:
                     self.optimizer.zero_grad()
                     loss = loss_function(out, pot[j*minibatch:(j+1)*minibatch])
                     if prints:
-                        print(f"net loss, {j=}: {loss=}")
+                        print("net loss, j="+str(j)+", loss="+str(loss))
                     loss.backward()
                     self.optimizer.step()
 
@@ -184,7 +184,7 @@ class DualApproximator:
                 #self.optimizer.zero_grad()
                 gen_loss = -loss_function(out, pot)
                 if prints:
-                    print(f"gen_net loss, {i=}: {gen_loss=}")
+                    print("gen_net loss, i="+str(i)+", gen_loss="+str(loss))
                 gen_loss.backward()
                 self.gen_optimizer.step()
 
