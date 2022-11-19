@@ -86,7 +86,7 @@ class genNet(nn.Module):
             )
         self.l3 = nn.Sequential(
             #nn.Linear(2*dim, 2*dim),
-            nn.Conv2d(2, 2, kernel_size=3),
+            nn.Conv2d(2, 2, kernel_size=3, padding=2),
             nn.ReLU(),
             )
         self.layers = [
