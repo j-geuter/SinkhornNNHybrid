@@ -88,6 +88,7 @@ class DualApproximator:
             for l in c:
                 if hasattr(l, 'reset_parameters'):
                     l.reset_parameters()
+        self.optimizer = Adam(self.net.parameters(), lr=self.lr)
 
     def reset_gen_net(self):
         """
@@ -97,6 +98,7 @@ class DualApproximator:
             for l in c:
                 if hasattr(l, 'reset_parameters'):
                     l.reset_parameters()
+        self.gen_optimizer = Adam(self.gen_net.parameters(), lr=self.gen_lr)
 
     def learn_potential(
                             self,
@@ -172,7 +174,8 @@ class DualApproximator:
                     loss.backward()
                     self.optimizer.step()
 
-            if i % learn_gen == 0:
+            #if i % learn_gen == 0:
+            if False:
                 x = self.gen_net(x_0).to(torch.float32)
                 out = self.net(x)
                 self.gen_optimizer.zero_grad()
