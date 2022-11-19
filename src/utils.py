@@ -43,6 +43,8 @@ def visualize_data(data, row = None, column = None):
         for i,ax in enumerate(axes):
             ax.imshow(data[i], cmap='Greys')
     else:
+        if row == 1:
+            axes = [axes]
         for j in range(row):
             for i,ax in enumerate(axes[j]):
                 ax.imshow(data[j*column+i], cmap='Greys')
