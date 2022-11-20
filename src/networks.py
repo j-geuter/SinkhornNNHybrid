@@ -92,5 +92,3 @@ class genNet(nn.Module):
         x[:, :self.dim] /=  x[:, :self.dim].sum(1)[:, None]
         x[:, self.dim:] /=  x[:, self.dim:].sum(1)[:, None]
         return x
-
-class
