@@ -174,8 +174,8 @@ class DualApproximator:
                     dual = dual.sum()/minibatch
                     self.optimizer.zero_grad()
                     loss = loss_function(out, pot_curr[j*minibatch:(j+1)*minibatch]) - dual
-                    #if prints:
-                    #    print("net loss, j="+str(j)+", loss="+str(loss.item()))
+                    if prints:
+                        print("net loss, j="+str(j)+", loss="+str(loss_function(out, pot_curr[j*minibatch:(j+1)*minibatch]).item())+", "+str(dual.item()))
                     loss.backward()
                     self.optimizer.step()
 
