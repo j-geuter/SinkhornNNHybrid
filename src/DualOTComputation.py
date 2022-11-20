@@ -189,7 +189,7 @@ class DualApproximator:
                     gen_loss = -loss_function(out, pot[j*minibatch:(j+1)*minibatch])
                     if prints:
                         print("gen_net loss, i="+str(i)+", gen_loss="+str(gen_loss.item()))
-                        visualize_data(torch.cat((x_gen.detach().cpu()[j*minibatch, :196], x_gen.detach().cpu()[j*minibatch, 196:]), 0), 1, 2)
+                        visualize_data(torch.cat((x_gen.detach().cpu()[j*minibatch, :196][None, :], x_gen.detach().cpu()[j*minibatch, 196:][None, :]), 0), 1, 2)
                     gen_loss.backward(retain_graph=True)
                     self.gen_optimizer.step()
 
