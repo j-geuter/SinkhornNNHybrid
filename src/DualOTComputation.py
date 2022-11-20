@@ -170,8 +170,9 @@ class DualApproximator:
                 x_curr, pot_curr = x[perm], pot[perm]
                 for j in range(batchsize//minibatch):
                     out = self.net(x_curr[j*minibatch:(j+1)*minibatch])
+                    dual = compute_dual(out[:, :self.dim], out[:, self.dim:], pot_curr[j*minibatch:(j+1)*minibatch])
                     self.optimizer.zero_grad()
-                    loss = loss_function(out, pot_curr[j*minibatch:(j+1)*minibatch])
+                    loss = loss_function(out, pot_curr[j*minibatch:(j+1)*minibatch]) - .1*dual
                     if prints:
                         print("net loss, j="+str(j)+", loss="+str(loss.item()))
                     loss.backward()
