@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import math
+from torchvision.transforms import Resize
 
 from utils import compute_c_transform
 from costmatrix import euclidean_cost_matrix
@@ -75,7 +76,7 @@ class genNet(nn.Module):
         self.dim = dim
         self.length = int(math.sqrt(self.dim))
         self.l1 = nn.Sequential(
-            nn.Linear(64, 2*dim),
+            nn.Linear(72, 2*dim),
             nn.ReLU(),
             )
         self.layers = [
@@ -83,6 +84,9 @@ class genNet(nn.Module):
         ]
 
     def forward(self, x):
+        #x_0 = x.detach().copy().reshape(x.size(0), 8, 8)
+        #transform = Resize((self.length, self.length))
+        #x_0 = transform(x_0).reshape(x_0.size(0), 64)
         #x = x.reshape(x.size(0), 2, self.length, self.length)
         for l in self.layers:
             x = l(x)
