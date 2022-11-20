@@ -76,7 +76,7 @@ class genNet(nn.Module):
         self.dim = dim
         self.length = int(math.sqrt(self.dim))
         self.l1 = nn.Sequential(
-            nn.Linear(72, 2*dim),
+            nn.Linear(288, 2*dim),
             nn.ReLU(),
             )
         self.layers = [
