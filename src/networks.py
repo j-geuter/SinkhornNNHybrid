@@ -84,12 +84,13 @@ class genNet(nn.Module):
         ]
 
     def forward(self, x):
-        #x_0 = x.detach().copy().reshape(x.size(0), 8, 8)
-        #transform = Resize((self.length, self.length))
-        #x_0 = transform(x_0).reshape(x_0.size(0), 64)
+        x_0 = x.detach().copy().reshape(2, x.size(0), 6, 6)
+        transform = Resize((self.length, self.length))
+        x_0 = torch.cat((transform(x_0[0]).reshape(x.size(0), 196), transform(x_0[1]).reshape(x.size(0), 196)), 1)
         #x = x.reshape(x.size(0), 2, self.length, self.length)
         for l in self.layers:
             x = l(x)
+        x = x + x_0
         #x = x.reshape(x.size(0), 2*self.dim)
         x = x.to(torch.float64)
         x += 1e-2
