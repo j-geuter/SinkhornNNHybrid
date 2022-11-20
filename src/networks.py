@@ -75,7 +75,7 @@ class genNet(nn.Module):
         self.dim = dim
         self.length = int(math.sqrt(self.dim))
         self.l1 = nn.Sequential(
-            nn.Linear(70, 2*dim),
+            nn.Linear(64, 2*dim),
             nn.ReLU(),
             )
         self.layers = [
@@ -92,3 +92,5 @@ class genNet(nn.Module):
         x[:, :self.dim] /=  x[:, :self.dim].sum(1)[:, None]
         x[:, self.dim:] /=  x[:, self.dim:].sum(1)[:, None]
         return x
+
+class
