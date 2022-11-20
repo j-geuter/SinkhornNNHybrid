@@ -45,11 +45,12 @@ class DualApproximator:
         :param model: Optional path to a torch model to be loaded.
         """
         self.length = length
-        self.net = FCNN(length*length)
+        self.dim = length*length
+        self.net = FCNN(self.dim)
         if model != None:
             self.net.load_state_dict(torch.load(model))
         self.net.to(device)
-        self.gen_net = genNet(length*length)
+        self.gen_net = genNet(self.dim)
         self.gen_net.to(device)
         self.lr = lr
         self.gen_lr = gen_lr
@@ -128,7 +129,6 @@ class DualApproximator:
         :param learn_gen: in every `learn_gen`th iteration, the generating net will be updated. Can be set to `False` to turn off learning.
         :return: dict with key 'pot', and also 'WS' if `WS_perf`==True. At each key is a list containing a list for each test dataset in `test_data`. Each list contains information on the respective error (MSE on potential resp. L1 on Wasserstein distance) over the course of learning.
         """
-        dim = self.length*self.length
         prior = MultivariateNormal(torch.zeros(72), torch.eye(72))
         if test_data == None: # we oftentimes have a variable 'testdata' predefined.
             try:
@@ -158,10 +158,10 @@ class DualApproximator:
 
             x = self.gen_net(x_0).detach()
 
-            pot = ot.emd(x[0][:dim], x[0][dim:], self.costmatrix, log=True)[1]['u']
+            pot = ot.emd(x[0][:self.dim], x[0][self.dim:], self.costmatrix, log=True)[1]['u']
             pot = pot[None, :].to(torch.float32).to(device)
             for k in range(1, batchsize):
-                log = ot.emd(x[k][:dim], x[k][dim:], self.costmatrix, log=True)[1]
+                log = ot.emd(x[k][:self.dim], x[k][self.dim:], self.costmatrix, log=True)[1]
                 pot = torch.cat((pot, log['u'][None, :].to(torch.float32).to(device)), 0)
             x = x.to(torch.float32)
 
@@ -189,7 +189,7 @@ class DualApproximator:
                     gen_loss = -loss_function(out, pot[j*minibatch:(j+1)*minibatch])
                     if prints and j==0:
                         print("gen_net loss, i="+str(i)+", gen_loss="+str(gen_loss.item()))
-                        visualize_data(torch.cat((x_gen.detach().cpu()[j*minibatch, :196][None, :], x_gen.detach().cpu()[j*minibatch, 196:][None, :]), 0), 1, 2)
+                        visualize_data(torch.cat((x_gen.detach().cpu()[j*minibatch, :self.dim][None, :], x_gen.detach().cpu()[j*minibatch, self.dim:][None, :]), 0), 1, 2)
                     gen_loss.backward(retain_graph=True)
                     self.gen_optimizer.step()
 
