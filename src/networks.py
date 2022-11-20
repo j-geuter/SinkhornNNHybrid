@@ -76,7 +76,7 @@ class genNet(nn.Module):
         self.dim = dim
         self.length = int(math.sqrt(self.dim))
         self.l1 = nn.Sequential(
-            nn.Linear(800, 2*dim),
+            nn.Linear(128, 2*dim),
             nn.ReLU(),
             )
         self.layers = [
@@ -84,13 +84,13 @@ class genNet(nn.Module):
         ]
 
     def forward(self, x):
-        x_0 = x.detach().clone().reshape(2, x.size(0), 20, 20)
+        x_0 = x.detach().clone().reshape(2, x.size(0), 8, 8)
         transform = Resize((self.length, self.length))
         x_0 = torch.cat((transform(x_0[0]).reshape(x.size(0), self.dim), transform(x_0[1]).reshape(x.size(0), self.dim)), 1)
         #x = x.reshape(x.size(0), 2, self.length, self.length)
         for l in self.layers:
             x = l(x)
-        x = x + .1*nn.functional.relu(x_0)
+        x = x + 0*nn.functional.relu(x_0)
         #x = x.reshape(x.size(0), 2*self.dim)
         x = x.to(torch.float64)
         x += 1e-2
