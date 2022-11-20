@@ -90,8 +90,7 @@ class genNet(nn.Module):
         #x = x.reshape(x.size(0), 2, self.length, self.length)
         for l in self.layers:
             x = l(x)
-        print("x: "+str(x.sum())+", x_0: "+str((.1*nn.functional.relu(x_0)).sum()))
-        x = x + .1*nn.functional.relu(x_0)
+        x = x# + .1*nn.functional.relu(x_0)
         #x = x.reshape(x.size(0), 2*self.dim)
         x = x.to(torch.float64)
         x += 1e-2
