@@ -129,7 +129,7 @@ class DualApproximator:
         :param learn_gen: in every `learn_gen`th iteration, the generating net will be updated. Can be set to `False` to turn off learning.
         :return: dict with key 'pot', and also 'WS' if `WS_perf`==True. At each key is a list containing a list for each test dataset in `test_data`. Each list contains information on the respective error (MSE on potential resp. L1 on Wasserstein distance) over the course of learning.
         """
-        prior = MultivariateNormal(torch.zeros(72), torch.eye(72))
+        prior = MultivariateNormal(torch.zeros(288), torch.eye(288))
         if test_data == None: # we oftentimes have a variable 'testdata' predefined.
             try:
                 test_data = testdata
