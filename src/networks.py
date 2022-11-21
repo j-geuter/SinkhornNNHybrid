@@ -93,7 +93,7 @@ class genNet(nn.Module):
         x = x + .3*nn.functional.relu(x_0)
         #x = x.reshape(x.size(0), 2*self.dim)
         x = x.to(torch.float64)
-        x += 1e-2
+        x += 1e-1
         x[:, :self.dim] /=  x[:, :self.dim].sum(1)[:, None]
         x[:, self.dim:] /=  x[:, self.dim:].sum(1)[:, None]
         return x
