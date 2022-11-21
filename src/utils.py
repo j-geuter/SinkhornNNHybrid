@@ -69,17 +69,20 @@ def check_accuracy(batch, method, reg, costmatrix = None):
     err /= n_sample
     return err
 
-def compute_c_transform(cost, sample):
+def compute_c_transform(cost, sample, zero_sum = False):
     """
     Computes the c transform of 'sample' w.r.t. to cost matrix 'cost'. Supports multiple samples.
     :param cost: Two-dimensional tensor. Cost matrix.
     :param sample: Two-dimensional tensor. Sample(s). If just one sample is given, it needs to have an empty first dimension.
+    :param zero_sum: if True, deducts a constant from each transform such that it sums to zero.
     :return: Two-dimensional tensor. c-transforms of `sample`.
     """
     lamext=sample.reshape(len(sample),len(sample[0]),1).expand(len(sample),len(sample[0]),len(sample[0])).transpose(2,1)
     lamstar=(cost-lamext).amin(dim=2).float()
     del lamext
     torch.cuda.empty_cache()
+    if zero_sum:
+        lamstar = lamstar - lamstar.sum(1)[:, None]/lamstar.size(1)
     return lamstar
 
 def compute_dual(alpha, beta, u, v = None):
