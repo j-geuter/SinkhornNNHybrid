@@ -177,13 +177,13 @@ class DualApproximator:
                     loss = loss_function(out, pot_curr[j*minibatch:(j+1)*minibatch])# - 20*dual
                     if prints:
                         print("net loss, j="+str(j)+", loss="+str(loss.item()))
-                    loss.backward()
+                    loss.backward(retain_graph=True)
                     self.optimizer.step()
-                    #out_c = self.net(torch.cat((x_curr[j*minibatch:(j+1)*minibatch,784:], x_curr[j*minibatch:(j+1)*minibatch,:784]), 1))
-                    #self.optimizer.zero_grad()
-                    #loss_c = loss_function(out_c, compute_c_transform(self.costmatrix, pot_curr[j*minibatch:(j+1)*minibatch]))
-                    #loss_c.backward()
-                    #self.optimizer.step()
+                    out_c = self.net(torch.cat((x_curr[j*minibatch:(j+1)*minibatch,784:], x_curr[j*minibatch:(j+1)*minibatch,:784]), 1))
+                    self.optimizer.zero_grad()
+                    loss_c = loss_function(out_c, compute_c_transform(self.costmatrix, pot_curr[j*minibatch:(j+1)*minibatch], zero_sum=True))
+                    loss_c.backward()
+                    self.optimizer.step()
 
 
             if learn_gen != False and i % learn_gen == 0:
