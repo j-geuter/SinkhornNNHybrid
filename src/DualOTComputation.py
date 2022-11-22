@@ -32,7 +32,7 @@ class DualApproximator:
     def __init__(
                     self,
                     length,
-                    lr = 0.002,
+                    lr = 0.003,
                     gen_lr = 0.0003,
                     exponent = 2,
                     model = None,
@@ -140,7 +140,7 @@ class DualApproximator:
         :param learn_gen: in every `learn_gen`th iteration, the generating net will be updated. Can be set to `False` to turn off learning.
         :return: dict with key 'pot', and also 'WS' if `WS_perf`==True. At each key is a list containing a list for each test dataset in `test_data`. Each list contains information on the respective error (MSE on potential resp. L1 on Wasserstein distance) over the course of learning.
         """
-        prior = MultivariateNormal(torch.zeros(128), torch.eye(128))
+        prior = MultivariateNormal(torch.zeros(128).to(device), torch.eye(128).to(device))
         if test_data == None: # we oftentimes have a variable 'testdata' predefined.
             try:
                 test_data = testdata
@@ -163,7 +163,7 @@ class DualApproximator:
                     performance['WS'][j].append(self.test_ws(test_data[j]))
             if gen_images:
                 with torch.no_grad():
-                    samples = self.gen_net(prior.sample((5,))).to(device)
+                    samples = self.gen_net(prior.sample((5,)))
                     performance['ims'].append(torch.cat((samples[:, :self.dim][None, :], samples[:, self.dim:][None, :]), 0))
 
         self.net.train()
@@ -171,7 +171,7 @@ class DualApproximator:
 
         for i in tqdm(range(n_samples//batchsize)):
 
-            x_0 = prior.sample((batchsize,)).to(device)
+            x_0 = prior.sample((batchsize,))
 
             x = self.gen_net(x_0).detach()
 
@@ -231,7 +231,7 @@ class DualApproximator:
                 self.net.train()
                 if gen_images:
                     with torch.no_grad():
-                        samples = self.gen_net(prior.sample((5,))).to(device)
+                        samples = self.gen_net(prior.sample((5,)))
                         performance['ims'].append(torch.cat((samples[:, :self.dim][None, :], samples[:, self.dim:][None, :]), 0))
         if verbose == 1:
             if WS_perf:
@@ -241,7 +241,7 @@ class DualApproximator:
                 performance['pot'][j].append(self.test_potential(test_data[j]))
             if gen_images:
                 with torch.no_grad():
-                    samples = self.gen_net(prior.sample((5,))).to(device)
+                    samples = self.gen_net(prior.sample((5,)))
                     performance['ims'].append(torch.cat((samples[:, :self.dim][None, :], samples[:, self.dim:][None, :]), 0))
         if verbose >= 1:
             return performance
