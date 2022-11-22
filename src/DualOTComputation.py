@@ -4,6 +4,7 @@ from torch.optim import Adam
 import torch.nn.functional as F
 import random
 from torch.distributions.multivariate_normal import MultivariateNormal
+from torch.optim.lr_scheduler import LambdaLR
 import ot
 
 
@@ -32,9 +33,10 @@ class DualApproximator:
                     self,
                     length,
                     lr = 0.001,
-                    gen_lr = 0.005,
+                    gen_lr = 0.0003,
                     exponent = 2,
-                    model = None
+                    model = None,
+                    gen_model = None
                 ):
         """
         Creates an agent that learns the dual potential function.
@@ -42,7 +44,8 @@ class DualApproximator:
         :param lr: learning rate.
         :param gen_lr: generative model learning rate.
         :param exponent: exponent with which the euclidean distance can be exponentiated.
-        :param model: Optional path to a torch model to be loaded.
+        :param model: Optional path to a torch model to be loaded for the approximator.
+        :param gen_model: Optional path toa  torch model to be loaded for the generator.
         """
         self.length = length
         self.dim = length*length
@@ -51,11 +54,17 @@ class DualApproximator:
             self.net.load_state_dict(torch.load(model))
         self.net.to(device)
         self.gen_net = genNet(self.dim)
+        if gen_model != None:
+            self.gen_net.load_state_dict(torch.load(gen_model))
         self.gen_net.to(device)
         self.lr = lr
         self.gen_lr = gen_lr
         self.optimizer = Adam(self.net.parameters(), lr=lr)
         self.gen_optimizer = Adam(self.gen_net.parameters(), lr=gen_lr)
+        self.lamb = lambda epoch: 0.99 ** epoch
+        self.gen_lamb = lambda epoch: 0.99 ** epoch
+        self.scheduler = LambdaLR(self.optimizer, lr_lambda=self.lamb)
+        self.gen_scheduler = LambdaLR(self.gen_optimizer, lr_lambda=self.gen_lamb)
         self.costmatrix = torch.tensor(euclidean_cost_matrix(length, length, exponent)).to(device)
         self.parnumber = sum(p.numel() for p in self.net.parameters())
         self.gen_parnumber = sum(p.numel() for p in self.gen_net.parameters())
@@ -184,6 +193,7 @@ class DualApproximator:
                     loss_c = loss_function(out_c, compute_c_transform(self.costmatrix, pot_curr[j*minibatch:(j+1)*minibatch], zero_sum=True))
                     loss_c.backward()
                     self.optimizer.step()
+            self.scheduler.step()
 
 
             if learn_gen != False and i % learn_gen == 0:
@@ -201,6 +211,8 @@ class DualApproximator:
                         visualize_data(torch.cat((x_gen.detach().cpu()[j*minibatch, :self.dim][None, :], x_gen.detach().cpu()[j*minibatch, self.dim:][None, :]), 0), 1, 2)
                     gen_loss.backward(retain_graph=True)
                     self.gen_optimizer.step()
+                self.gen_scheduler.step()
+
 
             if verbose >= 2 and i % (n_samples//(num_tests * batchsize)) == 0 and i > 0:
                 if WS_perf:
