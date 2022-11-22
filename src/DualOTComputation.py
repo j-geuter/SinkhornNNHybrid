@@ -439,17 +439,23 @@ class DualApproximator:
             out = self.net(x)
         return out
 
-    def test_potential(self, data, loss_function = F.mse_loss):
+    def test_potential(self, data, loss_function = F.mse_loss, relative = False):
         '''
         Tests the network on test data 'data'.
         :param data: data used for testing. Should be a list with each item being a dictionary with keys `d1`, `d2` and `u` which contain the two distributions and the dual potential as two-dimensional tensors.
+        :param relative: if True, computes the error relative to the distributions.
         :return: average `loss_function` error on the dual potential.
         '''
         self.net.eval()
         l = 0
         with torch.no_grad():
             for batch in data:
-                loss = loss_function(self.predict(batch['d1'], batch['d2']), batch['u'])
+                if not relative:
+                    loss = loss_function(self.predict(batch['d1'], batch['d2']), batch['u'])
+                else:
+                    approx_pot = self.predict(batch['d1'], batch['d2'])*batch['d1']*batch['d1'].size(1)
+                    true_pot = batch['u']*batch['d1']*batch['d1'].size(1)
+                    loss = loss_function(approx_pot, true_pot)
                 l += loss.item()
         l /= len(data)
         return l
