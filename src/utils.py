@@ -25,7 +25,7 @@ plt.rc('figure', titlesize=BIG)     # fontsize of the figure title
 
 def visualize_data(data, row = None, column = None):
     """
-    Visualizes data as black and white images.
+    Visualizes data as black and white images. To visualize a single image, use visualize_image instead.
     :param data: list or array of size [n,dim] or [n, l, l], where n is the number of images to be visualized, and dim is the number of pixels per image (l is the height/width).
     :param row: optional parameter determining the number of rows.
     :param column: optimal parameter determining the number of columns.
@@ -47,6 +47,17 @@ def visualize_data(data, row = None, column = None):
             for i,ax in enumerate(axes[j]):
                 ax.imshow(data[j*column+i], cmap='Greys')
     fig.show()
+
+def visualize_image(image):
+    """
+    Visualizes an single data sample.
+    :param image: A square image; either a two-dimensional tensor, or a one-dimensional tensor where all points are concatenated.
+    """
+    if image.dim() == 1:
+        length = int(math.sqrt(image.size(0)))
+        image = image.reshape(length, length)
+    plt.imshow(image, cmap='Greys')
+    plt.show()
 
 def check_accuracy(batch, method, reg, costmatrix = None):
     """
