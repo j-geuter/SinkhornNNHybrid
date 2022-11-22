@@ -112,20 +112,20 @@ class DualApproximator:
 
     def learn_potential(
                             self,
-                            n_samples,
+                            n_samples = 100000,
                             loss_function = F.mse_loss,
                             epochs = 5,
-                            batchsize = 300,
+                            batchsize = 500,
                             minibatch = 100,
                             verbose = 0,
-                            num_tests = 50,
+                            num_tests = 30,
                             test_data = None,
                             WS_perf = False,
-                            learn_gen = 10,
+                            learn_gen = 1,
                             prints = False
                         ):
         """
-        Learns from data in file 'data_filename' using `loss_function` loss on the dual potential.
+        Learns using `loss_function` loss on the dual potential.
         :param n_samples: number of unique samples to train on.
         :param loss_function: loss function to be used in backpropagation.
         :param epochs: number of epochs performed on data. Total number of training samples equals `n_samples`*`epochs`.
@@ -235,13 +235,10 @@ class DualApproximator:
                                 data,
                                 learn_function,
                                 nb_runs = 10,
-                                loss = F.mse_loss,
-                                num_tests = 30,
-                                test_data = None,
-                                WS_perf = False,
                                 conf = .95,
                                 save_models = False,
-                                model_name = ''
+                                model_name = '',
+                                **kwargs
                             ):
         """
         Runs a learning function and computes the average performance and a confidence interval w.r.t. a loss function `loss` across `nb_runs` runs.
@@ -249,13 +246,10 @@ class DualApproximator:
         :param data: training data file name.
         :param learn_function: function used for learning.
         :param nb_runs: number of runs, i.e. models trained.
-        :param loss: loss function.
-        :param num_tests: number of test results in each of the 10 runs.
-        :param test_data: list containing test data. If just one test data set is given, it needs to be nested into a 1-element list.
-        :param WS_perf: if True, also collects performance information on Wasserstein distance approximation in addition to potential approximation.
         :param conf: confidence for the confidence interval.
         :param save_models: optional boolean. If True, saves all trained networks after their training finished.
         :param model_name: file name of saved models. Models will be saved as `name`_0.pt to `name`_(`nb_runs`-1).pt.
+        :param **kwargs: keyword arguments passed to `learn_function`.
         :return: if WS_perf==True, returns (results, WS_results), otherwise results. For each test set in test_data, results contains a 3-tuple computed by `compute_mean_conf` which captures the average MSE error on the potential over the course of learning. WS_results is similar, but for the L1 error on the Wasserstein distance.
         """
         test_nb = len(test_data)
@@ -265,7 +259,7 @@ class DualApproximator:
         for i in range(nb_runs):
             self.reset_params()
             print(f'Processing model {i+1} of {nb_runs}.')
-            perf = learn_function(data_filename=data, loss_function=loss, num_tests=num_tests, test_data=test_data, verbose=2, WS_perf = WS_perf)
+            perf = learn_function(verbose=2, **kwargs)
             if save_models:
                 self.save(f'{model_name}_{i}.pt')
             for j in range(test_nb):
