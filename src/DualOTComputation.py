@@ -269,7 +269,7 @@ class DualApproximator:
             return (results, WS_results)
         return results
 
-    def run_tests(self, testdata, test_function):
+    def run_tests(self, testdata, test_function, **kwargs):
         """
         A helper function that runs multiple sets of test data through a `test_function`.
         :param testdata: list containing test data.
@@ -278,7 +278,7 @@ class DualApproximator:
         """
         results = []
         for d in testdata:
-            results.append(test_function(d))
+            results.append(test_function(d, **kwargs))
         return results
 
     def learn_ws(
