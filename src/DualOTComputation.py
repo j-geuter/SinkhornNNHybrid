@@ -217,7 +217,7 @@ class DualApproximator:
                         loss_c = loss_function(out_c, compute_c_transform(self.costmatrix, pot_curr[j*minibatch:(j+1)*minibatch], zero_sum=True))
                     else:
                         ws_guess = compute_dual(x_curr[j*minibatch:(j+1)*minibatch, self.dim:], x_curr[j*minibatch:(j+1)*minibatch, :self.dim], out_c)
-                        loss = loss_function(ws_guess, pot_curr[j*minibatch:(j+1)*minibatch])
+                        loss_c = loss_function(ws_guess, pot_curr[j*minibatch:(j+1)*minibatch])
                     loss_c.backward()
                     self.optimizer.step()
             self.scheduler.step()
