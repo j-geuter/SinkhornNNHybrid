@@ -31,7 +31,7 @@ class DualApproximator:
 
     def __init__(
                     self,
-                    length,
+                    length = 28,
                     lr = 0.003,
                     gen_lr = 0.0003,
                     exponent = 2,
