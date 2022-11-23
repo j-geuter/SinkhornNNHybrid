@@ -208,7 +208,7 @@ class DualApproximator:
                     if not learn_WS:
                         loss = loss_function(out, pot_curr[j*minibatch:(j+1)*minibatch])# - 20*dual
                     else:
-                        ws_guess = compute_dual(x_curr[j*minibatch:(j+1)*minibatch, :self.dim], x_curr[j*minibatch:(j+1)*minibatch, self.dim:], out)
+                        ws_guess = compute_dual(x_curr[j*minibatch:(j+1)*minibatch, :self.dim], x_curr[j*minibatch:(j+1)*minibatch, self.dim:], out, c=self.costmatrix)
                         loss = loss_function(ws_guess, pot_curr[j*minibatch:(j+1)*minibatch])
                     if prints:
                         print("net loss, j="+str(j)+", loss="+str(loss.item()))
@@ -219,7 +219,7 @@ class DualApproximator:
                     if not learn_WS:
                         loss_c = loss_function(out_c, compute_c_transform(self.costmatrix, pot_curr[j*minibatch:(j+1)*minibatch], zero_sum=True))
                     else:
-                        ws_guess = compute_dual(x_curr[j*minibatch:(j+1)*minibatch, self.dim:], x_curr[j*minibatch:(j+1)*minibatch, :self.dim], out_c)
+                        ws_guess = compute_dual(x_curr[j*minibatch:(j+1)*minibatch, self.dim:], x_curr[j*minibatch:(j+1)*minibatch, :self.dim], out_c, c=self.costmatrix)
                         loss_c = loss_function(ws_guess, pot_curr[j*minibatch:(j+1)*minibatch])
                     loss_c.backward()
                     self.optimizer.step()
@@ -237,7 +237,7 @@ class DualApproximator:
                     if not learn_WS:
                         gen_loss = -loss_function(out, pot[j*minibatch:(j+1)*minibatch])
                     else:
-                        ws_guess = compute_dual(x_gen[j*minibatch:(j+1)*minibatch, :self.dim], x_gen[j*minibatch:(j+1)*minibatch, self.dim:], out)
+                        ws_guess = compute_dual(x_gen[j*minibatch:(j+1)*minibatch, :self.dim], x_gen[j*minibatch:(j+1)*minibatch, self.dim:], out, c=self.costmatrix)
                         gen_loss = -loss_function(ws_guess, pot[j*minibatch:(j+1)*minibatch])
                     if prints and j==0:
                         print("gen_net loss, i="+str(i)+", gen_loss="+str(gen_loss.item()))

@@ -96,7 +96,7 @@ def compute_c_transform(cost, sample, zero_sum = False):
         lamstar = lamstar - lamstar.sum(1)[:, None]/lamstar.size(1)
     return lamstar
 
-def compute_dual(alpha, beta, u, v = None):
+def compute_dual(alpha, beta, u, v = None, c = None):
     """
     Computes the dual value of the OT problem as `\int u \, d\alpha + \int v \, d\beta`. Supports multiple samples in 'u' and 'v'.
     Either u or v can be None, in which case it is replaced by the c-transform of the other.
@@ -104,15 +104,18 @@ def compute_dual(alpha, beta, u, v = None):
     :param beta: Two-dimensional tensor. Target distribution(s).
     :param u: Two-dimensional tensor or None. First dual potential(s).
     :param v: Two-dimensional tensor or None. Second dual potential(s).
+    :param c: Optional cost matrix.
     :return: Two-dimensional tensor. Values of the dual problem at (u,v).
     """
     if u == None:
-        l = int(math.sqrt(v.size(1)))
-        c = euclidean_cost_matrix(l, l, 2, True)
+        if c == None:
+            l = int(math.sqrt(v.size(1)))
+            c = euclidean_cost_matrix(l, l, 2, True)
         u = compute_c_transform(c, v)
     elif v == None:
-        l = int(math.sqrt(u.size(1)))
-        c = euclidean_cost_matrix(l, l, 2, True)
+        if c == None:
+            l = int(math.sqrt(u.size(1)))
+            c = euclidean_cost_matrix(l, l, 2, True)
         v = compute_c_transform(c, u)
     values = torch.sum(alpha*u, dim=1) + torch.sum(beta*v, dim=1)
     return values[None, :].T
