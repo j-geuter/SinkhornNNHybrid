@@ -231,7 +231,7 @@ class DualApproximator:
                     out = self.net(x_gen[j*minibatch:(j+1)*minibatch])
                     self.gen_optimizer.zero_grad()
                     #self.optimizer.zero_grad()
-                    if not WS_learn:
+                    if not learn_WS:
                         gen_loss = -loss_function(out, pot[j*minibatch:(j+1)*minibatch])
                     else:
                         ws_guess = compute_dual(x_gen[j*minibatch:(j+1)*minibatch, :self.dim], x_gen[j*minibatch:(j+1)*minibatch, self.dim:], out)
