@@ -144,6 +144,9 @@ class DualApproximator:
         :return: dict with key 'pot', and also 'WS' if `WS_perf`==True. At each key is a list containing a list for each test dataset in `test_data`. Each list contains information on the respective error (MSE on potential resp. L1 on Wasserstein distance) over the course of learning.
         """
         prior = MultivariateNormal(torch.zeros(128).to(device), torch.eye(128).to(device))
+        if num_tests > n_samples//batchsize:
+            print("NOTE: `num_tests` exceeds number of iterations. Number of tests reduced to number of iterations.")
+        num_tests = max(num_tests, n_samples//batchsize) # make sure the number of tests does not exceed the number of iterations.
         if test_data == None: # we oftentimes have a variable 'testdata' predefined.
             try:
                 test_data = testdata
