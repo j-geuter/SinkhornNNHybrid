@@ -187,11 +187,11 @@ class DualApproximator:
                 pot = pot - pot.sum(1)[:, None]/pot.size(1)
 
             else:
-                pot = ot.emd(x[0][:self.dim], x[0][self.dim:], self.costmatrix, log=True)[1]['cost'] # name pot a bit misleading but streamlines code
+                pot = torch.tensor([ot.emd(x[0][:self.dim], x[0][self.dim:], self.costmatrix, log=True)[1]['cost']]) # name pot a bit misleading but streamlines code
                 pot = pot[None, :].to(torch.float32).to(device)
                 for k in range(1, batchsize):
                     log = ot.emd(x[k][:self.dim], x[k][self.dim:], self.costmatrix, log=True)[1]
-                    pot = torch.cat((pot, log['cost'][None, :].to(torch.float32).to(device)), 0)
+                    pot = torch.cat((pot, torch.tensor([log['cost']])[None, :].to(torch.float32).to(device)), 0)
                 x = x.to(torch.float32)
 
             for e in range(epochs):
