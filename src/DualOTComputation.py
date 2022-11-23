@@ -127,7 +127,7 @@ class DualApproximator:
                             learn_WS = False
                         ):
         """
-        Learns using `loss_function` loss on the dual potential.
+        Learns using `loss_function` loss on the dual potential. Can also learn using a loss on the transport distance with `learn_WS`=True.
         :param n_samples: number of unique samples to train on.
         :param loss_function: loss function to be used in backpropagation.
         :param epochs: number of epochs performed on data. Total number of training samples equals `n_samples`*`epochs`.
