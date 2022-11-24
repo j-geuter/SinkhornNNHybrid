@@ -80,7 +80,9 @@ class DualApproximator:
                             verbose = 0,
                             num_tests = 50,
                             test_data = None,
-                            WS_perf = False
+                            WS_perf = False,
+                            rel_WS = False,
+                            cost_norm_WS = 1
                         ):
         """
         Learns from data in file 'data_filename' using `loss_function` loss on the dual potential.
@@ -92,6 +94,8 @@ class DualApproximator:
         :param num_tests: number of times test data is collected if `verbose` >= 2.
         :param test_data: list of test data used for testing if verbose is True. Can contain various test data sets. If only one test data set is given, it needs to be nested into a 1-element list.
         :param WS_perf: if True, also collects performance on Wasserstein distance calculation in addition to potential approximation.
+        :param rel_WS: if True, computes the relative Wasserstein distance errors instead. (Only if WS_perf==True.)
+        :param cost_norm_WS: an optional constant to scale the cost function by for Wassertein distance errors. (Only if WS_perf==True.)
         :return: dict with key 'pot', and also 'WS' if `WS_perf`==True. At each key is a list containing a list for each test dataset in `test_data`. Each list contains information on the respective error (MSE on potential resp. L1 on Wasserstein distance) over the course of learning.
         """
         if test_data == None: # we oftentimes have a variable 'testdata' predefined.
@@ -113,7 +117,7 @@ class DualApproximator:
                 performance['pot'][j].append(self.test_potential(test_data[j]))
             if WS_perf:
                 for j in range(test_nb):
-                    performance['WS'][j].append(self.test_ws(test_data[j]))
+                    performance['WS'][j].append(self.test_ws(test_data[j], rel=rel_WS, cost_norm=cost_norm_WS))
         self.net.train()
         if verbose >=2 and (dataset['d1'].size(0)//(num_tests * batchsize)) == 0:
             verbose = 1
@@ -133,14 +137,14 @@ class DualApproximator:
                 if verbose >= 2 and i % (dataset['d1'].size(0)//(num_tests * batchsize)) == 0 and i > 0:
                     if WS_perf:
                         for j in range(test_nb):
-                            performance['WS'][j].append(self.test_ws(test_data[j]))
+                            performance['WS'][j].append(self.test_ws(test_data[j], rel=rel_WS, cost_norm=cost_norm_WS))
                     for j in range(test_nb):
                         performance['pot'][j].append(self.test_potential(test_data[j]))
                     self.net.train()
             if verbose == 1:
                 if WS_perf:
                     for j in range(test_nb):
-                        performance['WS'][j].append(self.test_ws(test_data[j]))
+                        performance['WS'][j].append(self.test_ws(test_data[j], rel=rel_WS, cost_norm=cost_norm_WS))
                 for j in range(test_nb):
                     performance['pot'][j].append(self.test_potential(test_data[j]))
         if verbose >= 1:
@@ -218,7 +222,9 @@ class DualApproximator:
                     verbose = 0,
                     num_tests = 50,
                     test_data = None,
-                    WS_perf = False
+                    WS_perf = False,
+                    rel_WS = False,
+                    cost_norm_WS = 1
                 ):
         """
         Learns from data in file 'data_filename' using `loss_function` on the _squared_ Wasserstein-2 distance (i.e. the actual OT cost).
@@ -230,6 +236,8 @@ class DualApproximator:
         :param num_tests: number of times test data is collected if `verbose` >= 2.
         :param test_data: test data used for testing if verbose is True.
         :param WS_perf: if True, also collects performance information on Wasserstein distance approximation in addition to potential approximation.
+        :param rel_WS: if True, computes the relative Wasserstein distance errors instead. (Only if WS_perf==True.)
+        :param cost_norm_WS: an optional constant to scale the cost function by for Wassertein distance errors. (Only if WS_perf==True.)
         :return: dict with key 'pot', and also 'WS' if `WS_perf`==True. At each key is a list containing a list for each test dataset in `test_data`. Each list contains information on the respective error (MSE on potential resp. L1 on Wasserstein distance) over the course of learning.
         """
         if test_data == None: # we oftentimes have a variable 'testdata' predefined.
@@ -251,7 +259,7 @@ class DualApproximator:
                 performance['pot'][j].append(self.test_potential(test_data[j]))
             if WS_perf:
                 for j in range(test_nb):
-                    performance['WS'][j].append(self.test_ws(test_data[j]))
+                    performance['WS'][j].append(self.test_ws(test_data[j], rel=rel_WS, cost_norm=cost_norm_WS))
         self.net.train()
         if verbose >=2 and (dataset['d1'].size(0)//(num_tests * batchsize)) == 0:
             verbose = 1
@@ -273,14 +281,14 @@ class DualApproximator:
                 if verbose >= 2 and i % (dataset['d1'].size(0)//(num_tests * batchsize)) == 0 and i > 0:
                     if WS_perf:
                         for j in range(test_nb):
-                            performance['WS'][j].append(self.test_ws(test_data[j]))
+                            performance['WS'][j].append(self.test_ws(test_data[j], rel=rel_WS, cost_norm=cost_norm_WS))
                     for j in range(test_nb):
                         performance['pot'][j].append(self.test_potential(test_data[j]))
                     self.net.train()
             if verbose == 1:
                 if WS_perf:
                     for j in range(test_nb):
-                        performance['WS'][j].append(self.test_ws(test_data[j]))
+                        performance['WS'][j].append(self.test_ws(test_data[j], rel=rel_WS, cost_norm=cost_norm_WS))
                 for j in range(test_nb):
                     performance['pot'][j].append(self.test_potential(test_data[j]))
         if verbose >= 1:
@@ -382,34 +390,29 @@ class DualApproximator:
         l /= len(data)
         return l
 
-    def test_ws(self, data, loss_function = F.mse_loss, rel = False, return_ws = False):
+    def test_ws(self, data, loss_function = F.mse_loss, rel = False, return_ws = False, cost_norm = 1):
         '''
         Tests the network on test data 'data'.
         :param data: data used for testing. Should be a list with each item being a dictionary with keys `d1`, `d2` and `u` which contain the two distributions and the dual potential as two-dimensional tensors.
         :param loss_function: loss function.
         :param rel: if True, returns the relative error, computed as `[\sum (a_i-b_i)^z]/[\sum b_i^z]`, where a is the prediction and b the ground truth.
         :param return_ws: if True, additionally returns the approximated WS distances and the ground truth.
+        :param cost_norm: a constant to multiply the cost function with. Can be used to normalize the cost function w.r.t. the dimension.
         :return: average `loss_function` error on the squared Wasserstein-2 distance (i.e. the OT cost). If `return_ws`==True, at second position also returns a list containing 2-tuples, where the first entry corresponds to the estimated Wasserstein distance and the second entry to the ground truth.
         '''
         self.net.eval()
         l = 0
-        if rel:
-            if loss_function == F.mse_loss:
-                z = 2
-            elif loss_function == F.l1_loss:
-                z = 1
-            else:
-                raise ValueError(f'Loss function {loss_function} not supported for relative error computation.')
         if return_ws:
             ws_list = []
         with torch.no_grad():
             for batch in data:
                 u = self.predict(batch['d1'], batch['d2'])
-                v = compute_c_transform(self.costmatrix, u)
+                v = compute_c_transform(cost_norm*self.costmatrix, u)
                 ws_guess = compute_dual(batch['d1'], batch['d2'], u, v)
                 loss = loss_function(ws_guess, batch['cost'])
                 if rel:
-                    loss *= len(ws_guess)/torch.tensor([abs(c)**z for c in batch['cost']]).to(device).sum()
+                    zeros = torch.zeros(batch['cost'].size()).to(device)
+                    loss /= loss_function(zeros, batch['cost'])
                 l += loss.item()
                 if return_ws:
                     ws_list.append((ws_guess, batch['cost']))
