@@ -36,7 +36,8 @@ class DualApproximator:
                     gen_lr = 0.0003,
                     exponent = 2,
                     model = None,
-                    gen_model = None
+                    gen_model = None,
+                    norm_cost = False
                 ):
         """
         Creates an agent that learns the dual potential function.
@@ -46,6 +47,7 @@ class DualApproximator:
         :param exponent: exponent with which the euclidean distance can be exponentiated.
         :param model: Optional path to a torch model to be loaded for the approximator.
         :param gen_model: Optional path toa  torch model to be loaded for the generator.
+        :param norm_cost: if set to True, uses the cost matrix in the unit square. Otherwise, the square size is determined by the `length`.
         """
         self.length = length
         self.dim = length*length
@@ -66,6 +68,8 @@ class DualApproximator:
         self.scheduler = LambdaLR(self.optimizer, lr_lambda=self.lamb)
         self.gen_scheduler = LambdaLR(self.gen_optimizer, lr_lambda=self.gen_lamb)
         self.costmatrix = torch.tensor(euclidean_cost_matrix(length, length, exponent)).to(device)
+        if norm_cost:
+            self.costmatrix /= self.dim
         self.parnumber = sum(p.numel() for p in self.net.parameters())
         self.gen_parnumber = sum(p.numel() for p in self.gen_net.parameters())
 
