@@ -18,13 +18,21 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def load_data(name):
     """
-    Loads data from pickle file `name`.
+    Loads data of the form of `generate_simple_data`'s output from pickle file `name`.
     """
     with open(name, 'rb') as f:
         data = pickle.load(f)
     for batch in data:
         for key in batch.keys():
             batch[key] = batch[key].to(device)
+    return data
+
+def load_anydata(name):
+    """
+    Load any pickled data.
+    """
+    with open(name, 'rb') as f:
+        data = pickle.load(f)
     return data
 
 def save_data(data, name):

@@ -43,6 +43,8 @@ def visualize_data(data, row = None, column = None):
         for i,ax in enumerate(axes):
             ax.imshow(data[i], cmap='Greys')
     else:
+        if row == 1:
+            axes = [axes]
         for j in range(row):
             for i,ax in enumerate(axes[j]):
                 ax.imshow(data[j*column+i], cmap='Greys')
@@ -78,20 +80,23 @@ def check_accuracy(batch, method, reg, costmatrix = None):
     err /= n_sample
     return err
 
-def compute_c_transform(cost, sample):
+def compute_c_transform(cost, sample, zero_sum = False):
     """
     Computes the c transform of 'sample' w.r.t. to cost matrix 'cost'. Supports multiple samples.
     :param cost: Two-dimensional tensor. Cost matrix.
     :param sample: Two-dimensional tensor. Sample(s). If just one sample is given, it needs to have an empty first dimension.
+    :param zero_sum: if True, deducts a constant from each transform such that it sums to zero.
     :return: Two-dimensional tensor. c-transforms of `sample`.
     """
     lamext=sample.reshape(len(sample),len(sample[0]),1).expand(len(sample),len(sample[0]),len(sample[0])).transpose(2,1)
     lamstar=(cost-lamext).amin(dim=2).float()
     del lamext
     torch.cuda.empty_cache()
+    if zero_sum:
+        lamstar = lamstar - lamstar.sum(1)[:, None]/lamstar.size(1)
     return lamstar
 
-def compute_dual(alpha, beta, u, v = None):
+def compute_dual(alpha, beta, u, v = None, c = None):
     """
     Computes the dual value of the OT problem as `\int u \, d\alpha + \int v \, d\beta`. Supports multiple samples in 'u' and 'v'.
     Either u or v can be None, in which case it is replaced by the c-transform of the other.
@@ -99,15 +104,18 @@ def compute_dual(alpha, beta, u, v = None):
     :param beta: Two-dimensional tensor. Target distribution(s).
     :param u: Two-dimensional tensor or None. First dual potential(s).
     :param v: Two-dimensional tensor or None. Second dual potential(s).
+    :param c: Optional cost matrix.
     :return: Two-dimensional tensor. Values of the dual problem at (u,v).
     """
     if u == None:
-        l = int(math.sqrt(v.size(1)))
-        c = euclidean_cost_matrix(l, l, 2, True)
+        if c == None:
+            l = int(math.sqrt(v.size(1)))
+            c = euclidean_cost_matrix(l, l, 2, True)
         u = compute_c_transform(c, v)
     elif v == None:
-        l = int(math.sqrt(u.size(1)))
-        c = euclidean_cost_matrix(l, l, 2, True)
+        if c == None:
+            l = int(math.sqrt(u.size(1)))
+            c = euclidean_cost_matrix(l, l, 2, True)
         v = compute_c_transform(c, u)
     values = torch.sum(alpha*u, dim=1) + torch.sum(beta*v, dim=1)
     return values[None, :].T

@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import math
+from torchvision.transforms import Resize
 
 from utils import compute_c_transform
 from costmatrix import euclidean_cost_matrix
@@ -61,4 +62,38 @@ class FCNN(nn.Module):
             x = compute_c_transform(self.cost, compute_c_transform(self.cost, x))
         if self.zerosum:
             x = x - x.sum(1)[:,None]/self.dim
+        return x
+
+class genNet(nn.Module):
+    """
+    Network that generates new data samples from given samples.
+    """
+    def __init__(self, dim):
+        """
+        :param dim: dimension of each of the input distributions. Results in 2*`dim` dimensional input.
+        """
+        super(genNet, self).__init__()
+        self.dim = dim
+        self.length = int(math.sqrt(self.dim))
+        self.l1 = nn.Sequential(
+            nn.Linear(128, 2*dim),
+            nn.ReLU(),
+            )
+        self.layers = [
+            self.l1
+        ]
+
+    def forward(self, x):
+        x_0 = x.detach().clone().reshape(2, x.size(0), 8, 8)
+        transform = Resize((self.length, self.length))
+        x_0 = torch.cat((transform(x_0[0]).reshape(x.size(0), self.dim), transform(x_0[1]).reshape(x.size(0), self.dim)), 1)
+        #x = x.reshape(x.size(0), 2, self.length, self.length)
+        for l in self.layers:
+            x = l(x)
+        x = x + .3*nn.functional.relu(x_0)
+        #x = x.reshape(x.size(0), 2*self.dim)
+        x = x.to(torch.float64)
+        x += 1e-2
+        x[:, :self.dim] /=  x[:, :self.dim].sum(1)[:, None]
+        x[:, self.dim:] /=  x[:, self.dim:].sum(1)[:, None]
         return x
