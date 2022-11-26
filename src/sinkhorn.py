@@ -228,10 +228,12 @@ def compare_iterations(
                 if 'WS' in accs:
                     cost = log['cost']
                     cost_diff = cost - data_dict['cost'][k*n:(k+1)*n].view(-1)
-                    if rel_WS:
-                        cost_diff /= data_dict['cost'][k*n:(k+1)*n].view(-1)
                     nb_nan = cost_diff.isnan().sum()
                     cost_diff = torch.where(cost_diff.isnan(), torch.tensor(0).to(cost_diff.dtype).to(device), cost_diff)
+                    if rel_WS:
+                        cost_diff /= data_dict['cost'][k*n:(k+1)*n].view(-1)
+                        nb_nan = cost_diff.isnan().sum()
+                        cost_diff = torch.where(cost_diff.isnan(), torch.tensor(0).to(cost_diff.dtype).to(device), cost_diff)
                     if nb_nan/len(cost_diff) > .1:
                         perc = '%.2f'%(100*nb_nan/len(cost_diff))
                         print(f'Warning! {perc}% of costs are NaN.')

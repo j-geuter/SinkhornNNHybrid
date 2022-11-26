@@ -233,6 +233,7 @@ def plot_conf(
                 separate_plots = None,
                 rows = None,
                 columns = None,
+                slice = None,
                 scale_y = 1
             ):
     """
@@ -246,12 +247,19 @@ def plot_conf(
     :param separate_plots: optional parameter to split data into separate plots. If given, this should be a list of lists, each tuple containing the data indices for a plot.
     :param rows: number of rows for subplots. If None, all subplots will be in one row.
     :param columns: number of columns for subplots.
+    :param slice: optional parameter with which one can determine a slice of each element in y to be used instead. If given, this is a tuple of two ints indicating the slice.
     :param scale_y: scales all `y` values by `scale_y`.
     :return: None.
     """
     if isinstance(x, int):
         x = [i*x/(len(y[0][0])-1) for i in range(len(y[0][0]))]
     n = len(y)
+    if slice != None:
+        x = x[slice[0]:slice[1]]
+        for i in range(n):
+            for j in range(3):
+                y[i] = list(y[i])
+                y[i][j] = y[i][j][slice[0]:slice[1]]
     if not separate_plots:
         colors = iter(plt.cm.rainbow(np.linspace(0, 1, n)))
         for i in range(n):
