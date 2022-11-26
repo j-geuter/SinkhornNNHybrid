@@ -152,7 +152,8 @@ def plot(
             separate_plots = None,
             rows = None,
             columns = None,
-            slice = None
+            slice = None,
+            scale_y = 1
         ):
     """
     Plots data.
@@ -166,6 +167,7 @@ def plot(
     :param rows: number of rows for subplots. If None, all subplots will be in one row.
     :param columns: number of columns for subplots.
     :param slice: optional parameter with which one can determine a slice of each element in y to be used instead. If given, this is a tuple of two ints indicating the slice.
+    :param scale_y: scales all `y` values by `scale_y`.
     :return: None.
     """
     if x == None:
@@ -181,9 +183,9 @@ def plot(
     if separate_plots == None:
         for i in range(len(y)):
             if labels != None:
-                plt.plot(x[i], y[i], label=labels[i])
+                plt.plot(x[i], scale_y*np.array(y[i]), label=labels[i])
             else:
-                plt.plot(x[i], y[i])
+                plt.plot(x[i], scale_y*np.array(y[i]))
         plt.xlabel(x_label)
         plt.ylabel(y_label)
         plt.legend()
@@ -206,9 +208,9 @@ def plot(
                 for j in separate_plots[r*columns+i]:
                     color = next(colors)
                     if labels != None:
-                        ax.plot(x[i], y[j], label=labels[j], color=color)
+                        ax.plot(x[i], scale_y*np.array(y[j]), label=labels[j], color=color)
                     else:
-                        ax.plot(x[i], y[j], color=color)
+                        ax.plot(x[i], scale_y*np.array(y[j]), color=color)
                 ax.set_ylim(bottom=0)
                 if r == rows-1:
                     ax.set_xlabel(x_label)
@@ -230,7 +232,8 @@ def plot_conf(
                 titles = None,
                 separate_plots = None,
                 rows = None,
-                columns = None
+                columns = None,
+                scale_y = 1
             ):
     """
     Plots data containing average values alongside their confidence intervals as shaded areas.
@@ -243,6 +246,7 @@ def plot_conf(
     :param separate_plots: optional parameter to split data into separate plots. If given, this should be a list of lists, each tuple containing the data indices for a plot.
     :param rows: number of rows for subplots. If None, all subplots will be in one row.
     :param columns: number of columns for subplots.
+    :param scale_y: scales all `y` values by `scale_y`.
     :return: None.
     """
     if isinstance(x, int):
@@ -252,8 +256,8 @@ def plot_conf(
         colors = iter(plt.cm.rainbow(np.linspace(0, 1, n)))
         for i in range(n):
             color = next(colors)
-            plt.fill_between(x, y[i][0], y[i][2], color=color/3, linewidth=0)
-            plt.plot(x, y[i][1], label=labels[i], color=color)
+            plt.fill_between(x, scale_y*np.array(y[i][0]), scale_y*np.array(y[i][2]), color=color/3, linewidth=0)
+            plt.plot(x, scale_y*np.array(y[i][1]), label=labels[i], color=color)
         plt.ylim(bottom=0)
         plt.xlabel(x_label)
         plt.ylabel(y_label)
@@ -278,8 +282,8 @@ def plot_conf(
                 colors = iter(plt.cm.rainbow(np.linspace(0, 1, len(separate_plots[r*columns+i]))))
                 for j in separate_plots[r*columns+i]:
                     color = next(colors)
-                    ax.fill_between(x, y[j][0], y[j][2], color=color/3, linewidth=0)
-                    ax.plot(x, y[j][1], label=labels[j], color=color)
+                    ax.fill_between(x, scale_y*np.array(y[j][0]), scale_y*np.array(y[j][2]), color=color/3, linewidth=0)
+                    ax.plot(x, scale_y*np.array(y[j][1]), label=labels[j], color=color)
                 ax.set_ylim(bottom=0)
                 if r == rows-1:
                     ax.set_xlabel(x_label)
