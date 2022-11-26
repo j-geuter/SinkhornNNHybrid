@@ -166,6 +166,7 @@ def compare_iterations(
                             inits,
                             names,
                             accs = ['WS','marg'],
+                            rel_WS = True,
                             max_iter = 25,
                             eps = 0.24,
                             min_start = None,
@@ -184,6 +185,7 @@ def compare_iterations(
     :param inits: list of initialization schemes. Takes functions that compute the first dual variable of the OT problem. If one is None, the default initialization is used instead.
     :param names: names of initialization schemes.
     :param accs: List containing specified accuracies. If it contains 'WS' computes the average L1 error on the Wasserstein distance. If if contains 'marg' computes the marginal constraint violations.
+    :param rel_WS: if True, computes the relative WS distance errors. Otherwise, computes absolute errors.
     :param max_iter: maximum number of iterations.
     :param eps: regularizer.
     :param min_start: sets all values in Sinkhorn initialization smaller than `min_start` to `min_start`.
@@ -226,6 +228,8 @@ def compare_iterations(
                 if 'WS' in accs:
                     cost = log['cost']
                     cost_diff = cost - data_dict['cost'][k*n:(k+1)*n].view(-1)
+                    if rel_WS:
+                        cost_diff /= data_dict['cost'][k*n:(k+1)*n].view(-1)
                     nb_nan = cost_diff.isnan().sum()
                     cost_diff = torch.where(cost_diff.isnan(), torch.tensor(0).to(cost_diff.dtype).to(device), cost_diff)
                     if nb_nan/len(cost_diff) > .1:
