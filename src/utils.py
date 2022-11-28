@@ -10,9 +10,10 @@ from costmatrix import euclidean_cost_matrix
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-SMALL = 8
-MEDIUM = 12
-BIG = 16
+SCALE = 1.4
+SMALL = SCALE*8
+MEDIUM = SCALE*12
+BIG = SCALE*16
 
 plt.rc('font', size=MEDIUM)         # controls default text sizes
 plt.rc('axes', titlesize=BIG)       # fontsize of the axes title
@@ -240,7 +241,7 @@ def plot_conf(
             ):
     """
     Plots data containing average values alongside their confidence intervals as shaded areas.
-    :param x: list containing x values. Can also be an integer, in which case it is converted to a list of numbers interpolating between 0 and that integer.
+    :param x: list of lists containing x values. Can also be an integer, in which case it is converted to a list of numbers interpolating between 0 and that integer.
     :param y: list of lists. Each contains three lists, the first corresponding to the lower confidence bound, the second to the average, the third to the upper confidence bound.
     :param labels: list of same length as `y` containing the labels for each plot.
     :param x_label: label for x axis.
@@ -257,10 +258,12 @@ def plot_conf(
     """
     if isinstance(x, int):
         x = [i*x/(len(y[0][0])-1) for i in range(len(y[0][0]))]
+    if not isinstance(x[0], list):
+        x = [x for i in range(len(y))]
     n = len(y)
     if slice != None:
-        x = x[slice[0]:slice[1]]
         for i in range(n):
+            x[i] = x[i][slice[0]:slice[1]]
             for j in range(3):
                 y[i] = list(y[i])
                 y[i][j] = y[i][j][slice[0]:slice[1]]
@@ -268,8 +271,8 @@ def plot_conf(
         colors = iter(plt.cm.rainbow(np.linspace(0, 1, n)))
         for i in range(n):
             color = next(colors)
-            plt.fill_between(x, scale_y*np.array(y[i][0]), scale_y*np.array(y[i][2]), color=color/3, linewidth=0)
-            plt.plot(x, scale_y*np.array(y[i][1]), label=labels[i], color=color)
+            plt.fill_between(x[i], scale_y*np.array(y[i][0]), scale_y*np.array(y[i][2]), color=color/3, linewidth=0)
+            plt.plot(x[i], scale_y*np.array(y[i][1]), label=labels[i], color=color)
         plt.ylim(bottom=0)
         plt.xlabel(x_label)
         plt.ylabel(y_label)
@@ -294,8 +297,8 @@ def plot_conf(
                 colors = iter(plt.cm.rainbow(np.linspace(0, 1, len(separate_plots[r*columns+i]))))
                 for j in separate_plots[r*columns+i]:
                     color = next(colors)
-                    ax.fill_between(x, scale_y*np.array(y[j][0]), scale_y*np.array(y[j][2]), color=color/3, linewidth=0)
-                    ax.plot(x, scale_y*np.array(y[j][1]), label=labels[j], color=color)
+                    ax.fill_between(x[i], scale_y*np.array(y[j][0]), scale_y*np.array(y[j][2]), color=color/3, linewidth=0)
+                    ax.plot(x[i], scale_y*np.array(y[j][1]), label=labels[j], color=color)
                 ax.set_ylim(bottom=0)
                 if r == rows-1:
                     ax.set_xlabel(x_label)
@@ -314,3 +317,83 @@ def plot_conf(
                 handles, labels = fig.axes[0].get_legend_handles_labels()
                 fig.legend(handles, labels, loc='lower center', ncol=len(labels))
         fig.show()
+
+def visualize_barycenters(
+                        samples,
+                        net,
+                        iters = 30,
+                        n_interpol = 5
+                    ):
+    """
+    Creates a visualization of Wasserstein barycenter interpolations between four given samples using gradient descent and a network only without Sinkhorn.
+    :param samples: an iterable containing the four samples. Each sample is either a one- or two-dimensional tensor of size [dim] or [height, width].
+    :param net: network used for transport computations.
+    :param iters: number of gradient steps.
+    :param n_interpol: number of interpolations. Final output will contain `n_interpol`**2 images. CURRENTLY ONLY IMPLEMENTED FOR N_INTERPOL=5.
+    """
+    net.doubletransform = True
+    if samples[0].dim() == 3:
+        for i in range(4):
+            l = samples[0].size(1)
+            samples[i] = samples[i].reshape(l**2)
+    dim = samples[0].size(0)
+    cost_matrix = euclidean_cost_matrix(dim, dim, 2, True).to(device)
+    images = [[0 for j in range(n_interpol)] for i in range(n_interpol)] # will contain output images for the visualization.
+    images[0][0] = samples[0]
+    images[-1][0] = samples[1]
+    images[0][-1] = samples[2]
+    images[-1][-1] = samples[3]
+    for (i,j) in [(2,0), (2,4)]:
+        images[i][j] = compute_barycenter([images[i-2][j], images[i+2],[j]], net, cost_matrix, iters)
+    for (i,j) in [(0,2), (4,2)]:
+        images[i][j] = compute_barycenter([images[i][j-2], images[i],[j+2]], net, cost_matrix, iters)
+    images[2][2] = compute_barycenter([images[0][0], images[0][4], images[4][0], images[4][4]], net, cost_matrix, iters)
+    for (i,j) in [(1,1), (1,3), (3,1), (3,3)]:
+        images[i][j] = compute_barycenter([images[i-1][j-1], images[i+1][j-1], images[i-1][j+1], images[i+1][j+1]], net, cost_matrix, iters)
+    for (i,j) in [(1,0), (3,0), (1,4), (2,4)]:
+        images[i][j] = compute_barycenter([images[i-1][j], images[i+1],[j]], net, cost_matrix, iters)
+    for (i,j) in [(0,1), (0,3), (4,1), (4,3)]:
+        images[i][j] = compute_barycenter([images[i][j-1], images[i],[j+1]], net, cost_matrix, iters)
+    for (i,j) in [(1,2), (2,1), (2,3), (3,2)]:
+        images[i][j] = compute_barycenter([images[i-1][j], images[i+1][j], images[i][j+1], images[i][j-1]], net, cost_matrix, iters)
+
+    fig, axes = plt.subplots(n_interpol, n_interpol)
+    for i in range(n_interpol):
+        for j in range(n_interpol):
+            axes[i][j].imshow(images[i][j], cmap='Greys')
+    fig.show()
+
+
+def compute_barycenter(
+                        samples,
+                        net,
+                        cost,
+                        iters = 30
+                        ):
+    """
+    Computes a barycenter of `samples` using gradient descent and a network only without Sinkhorn.
+    :param samples: an iterable containing the four samples. Each sample is either a one- or two-dimensional tensor of size [dim] or [height, width].
+    :param net: network used for transport computations.
+    :param cost: cost matrix.
+    :param iters: number of gradient steps.
+    """
+    n = len(samples)
+    archetypes = torch.cat((samples), 0).to(device)
+    preBarycenter = torch.ones((784)).to(device) #initialize the variable
+    preBarycenter.requires_grad = True #making the variable gradiable
+    optimizer = Adam([preBarycenter], lr=0.4)
+    lamb = lambda epoch: 0.9 ** epoch
+    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lamb)
+    for k in range(iters):
+      barycenter = torch.softmax(preBarycenter,dim=0) # Transforms the variable to become a probability measure
+      barycenters = torch.cat(([barycenter[None, :] for i in range(n)]), 0)
+      nninput = torch.cat((barycenters, archetypes), 1) # Makes the input for the NN
+      print("loss is:", loss, " k=", k)
+      optimizer.zero_grad()
+      loss = torch.sum(compute_dual(barycenters, archetypes, net(nninput), v=None, c=cost))  #Loss is the average of the dual formula for the output of the network
+      loss.backward()
+      optimizer.step() # makes a gradient step on preBarycenter
+      scheduler.step()
+    net.doubletransform = False
+    barycenter = torch.softmax(preBarycenter, dim=0)
+    return barycenter

@@ -4,7 +4,7 @@ from tqdm import tqdm
 import numpy as np
 import torch
 import torchvision
-from torchvision.datasets import MNIST, CIFAR10
+from torchvision.datasets import MNIST, CIFAR10, Omniglot
 from torchvision.transforms import Resize, ToTensor, Compose
 from torch.utils.data import DataLoader
 import random
@@ -176,13 +176,15 @@ def generate_dataset_data(
 def resize_tensor(data, size, filename = None):
     """
     Resizes `data` into samples of size `size`.
-    :param data: 2-dimensional tensor of size [n, dim], where n is the number of samples and dim the dimension of each sample.
+    :param data: 2-dimensional tensor of size [n, dim], where n is the number of samples and dim the dimension of each sample. Can also be of dimension [n, l, l] instead, where l*l=dim.
     :param size: new size of the data. Either a square number (for the dimension) or a tuple of height and length.
     :param filename: optional filename of where the new data is saved. If 'None', returns data instead.
     """
     l = len(data)
-    length = int(math.sqrt(len(data[0])))
-    data = data.reshape([l, length, length])
+    dtype = data.dtype
+    if data.dim == 2:
+        length = int(math.sqrt(len(data[0])))
+        data = data.reshape([l, length, length])
     if isinstance(size,tuple):
         new_dim = size[0]*size[1]
         new_size = size
@@ -194,9 +196,9 @@ def resize_tensor(data, size, filename = None):
     new_data = new_data.reshape(l, new_dim)
     new_data /= new_data.sum(-1).unsqueeze(-1)
     if filename == None:
-        return new_data
+        return new_data.to(dtype)
     else:
-        save_data(new_data, filename)
+        save_data(new_data.to(dtype), filename)
 
 def resize_file(from_file, to_file, size, center = True):
     """
