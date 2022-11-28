@@ -231,6 +231,8 @@ def plot_conf(
                 y_label,
                 titles = None,
                 separate_plots = None,
+                separate_legends = False,
+                collect_legends = False,
                 rows = None,
                 columns = None,
                 slice = None,
@@ -245,6 +247,8 @@ def plot_conf(
     :param y_label: label for y axis.
     :param titles: optional titles for each plot.
     :param separate_plots: optional parameter to split data into separate plots. If given, this should be a list of lists, each tuple containing the data indices for a plot.
+    :param seperate_legends: if True, creates a unique legend for each subplot, otherwise creates a single legend for all plots.
+    :param collect_legends: if True, collects all legends for all subplots for the legend (only if separate_legends==False). Otherwise, assumes legends for subplots are identical and uses only one subplot's legend.
     :param rows: number of rows for subplots. If None, all subplots will be in one row.
     :param columns: number of columns for subplots.
     :param slice: optional parameter with which one can determine a slice of each element in y to be used instead. If given, this is a tuple of two ints indicating the slice.
@@ -299,5 +303,14 @@ def plot_conf(
                     ax.set_ylabel(y_label)
                 if titles:
                     ax.set_title(next(titles))
-                ax.legend()
+                if separate_legends:
+                    ax.legend()
+        if not separate_legends:
+            if collect_legends:
+                handles_labels = [ax.get_legend_handles_labels() for ax in fig.axes]
+                handles, labels = [sum(lol, []) for lol in zip(*handles_labels)]
+                fig.legend(handles, labels)
+            else:
+                handles, labels = fig.axes[0].get_legend_handles_labels()
+                fig.legend(handles, labels, loc='lower center', ncol=len(labels))
         fig.show()

@@ -234,10 +234,13 @@ def compare_iterations(
                         cost_diff /= data_dict['cost'][k*n:(k+1)*n].view(-1)
                         nb_nan = cost_diff.isnan().sum()
                         cost_diff = torch.where(cost_diff.isnan(), torch.tensor(0).to(cost_diff.dtype).to(device), cost_diff)
-                    if nb_nan/len(cost_diff) > .1:
+                        nb_inf = cost_diff.isinf().sum()
+                        cost_diff = torch.where(cost_diff.isinf(), torch.tensor(0).to(cost_diff.dtype).to(device), cost_diff)
+                    if nb_nan/len(cost_diff) > .1 or nb_inf/len(cost_diff) > .1:
                         perc = '%.2f'%(100*nb_nan/len(cost_diff))
-                        print(f'Warning! {perc}% of costs are NaN.')
-                    err = (cost_diff.abs().sum()/(len(cost_diff) - nb_nan)).item()
+                        perc_inf = '%.2f'%(100*nb_inf/len(cost_diff))
+                        print(f'Warning! {perc}% of costs are NaN, and {perc_inf}% are inf.')
+                    err = (cost_diff.abs().sum()/(len(cost_diff) - nb_nan - nb_inf)).item()
                     errs['WS'][j][k].append(err)
                 if timeit:
                     times[j][k].append(t2)
