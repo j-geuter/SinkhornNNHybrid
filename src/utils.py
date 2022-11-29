@@ -392,10 +392,10 @@ def compute_barycenter(
       barycenter = torch.softmax(preBarycenter,dim=0) # Transforms the variable to become a probability measure
       barycenters = torch.cat(([barycenter[None, :] for i in range(n)]), 0)
       nninput = torch.cat((barycenters, archetypes), 1) # Makes the input for the NN
-      if prints:
-          print("loss is:", loss, " k=", k)
       optimizer.zero_grad()
       loss = torch.sum(compute_dual(barycenters, archetypes, net(nninput), v=None, c=cost))  #Loss is the average of the dual formula for the output of the network
+      if prints:
+          print("loss is:", loss, " k=", k)
       loss.backward()
       optimizer.step() # makes a gradient step on preBarycenter
       scheduler.step()
