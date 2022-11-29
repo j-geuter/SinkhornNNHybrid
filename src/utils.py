@@ -125,6 +125,7 @@ def compute_dual(alpha, beta, u, v = None, c = None):
 def compute_mean_conf(data, conf):
     """
     Given a list of lists of datapoints, computes their mean values and a confidence interval.
+    Each item in `data` corresponds to one set of samples taken over time, e.g. the length of `data` equals the sample size at each point in time and the length of each item in `data` equals the number of time steps that data was collected at.
     :param data: list of lists or list-like objects.
     :param conf: desired confidence between 0 and 1.
     :return: A 3-tuple. The first entry corresponds to the lower bound on the confidence interval, the second one to the mean, the third one to the upper bound.

@@ -160,6 +160,60 @@ def average_accuracy(
     conf_interval = compute_mean_conf(diffs, conf)
     return conf_interval
 
+def iterations_per_marginal(
+                                marg,
+                                testdata,
+                                inits,
+                                testdatalen = 10,
+                                eps = 0.2,
+                                min_start = 1e-35,
+                                max_start = 1e35,
+                                conf = .95,
+                                nb_samples = 20,
+                                stepsize = 10
+                            ):
+    """
+    Computes the average number of iterations needed for a specific marginal constraint violation threshold `marg` alongside its `conf` confidence interval.
+    :param marg: marginal constraint violation threshold.
+    :param testdata: test datasets.
+    :param inits: list of initialization schemes. Set an entry to 'None' for default initialization. For a DualApproximator object, pass the `net` attribute.
+    :param testdatalen: number of items from each test dataset to use.
+    :param eps: regularizer for Sinkhorn.
+    :param min_start: lower bound for initialization.
+    :param max_start: upper bound for initialization.
+    :param conf: confidence for confidence interval.
+    :param nb_samples: number of subsets to split data into.
+    :param stepsize: stepsize with which the number of iterations is increased until the desired threshold is attained.
+    :return: a list of lists, one for each test dataset, containing yet another list for each initialization, with a two-tuple for each test dataset containing the mean and the deviation of the confidence interval to either side.
+    """
+    returns = [[[] for j in range(len(inits))] for i in range(len(testdata))]
+    data = []
+    for i in range(len(testdata)):
+        data_dict = {'d1': None, 'd2': None, 'u': None, 'cost': None}
+        for key in data_dict.keys():
+                data_dict[key] = torch.cat([testdata[i][j][key] for j in range(testdatalen)]).to(device)
+        data.append(data_dict)
+    l = int(math.sqrt(data[0]['d1'].size(1)))
+    c = euclidean_cost_matrix(l, l, 2, True)
+    n = data[0]['d1'].size(0)//nb_samples
+    for i in range(len(data)):
+        for j in range(len(inits)):
+            for k in range(nb_samples):
+                iters = 0
+                while val > marg:
+                    iters += stepsize
+                    if inits[j] == None:
+                        val = sinkhorn(data[i]['d1'][k*n:(k+1)*n], data[i]['d2'][k*n:(k+1)*n], c, eps, max_iter=iters, log=True, max_start=max_start, min_start=min_start)['average marginal constraint violation']
+                    else:
+                        val = sinkhorn(data[i]['d1'][k*n:(k+1)*n], data[i]['d2'][k*n:(k+1)*n], c, eps, max_iter=iters, start=torch.exp(compute_c_transform(c, inits[j](torch.cat((data[i]['d1'][k*n:(k+1)*n], data[i]['d2'][k*n:(k+1)*n]), 1)).detach())/eps), log=True, max_start=max_start, min_start=min_start)['average marginal constraint violation']
+                returns[i][j].append([iters])
+    for i in range(len(data)):
+        for j in range(len(inits)):
+            results[i][j] = compute_mean_conf(results[i][j], conf)
+            results[i][j] = (results[i][j][1], results[i][j][1]-results[i][j][0])
+    return results
+
+
 
 def compare_iterations(
                             data,
@@ -169,8 +223,8 @@ def compare_iterations(
                             rel_WS = True,
                             max_iter = 25,
                             eps = 0.24,
-                            min_start = None,
-                            max_start = None,
+                            min_start = 1e-35,
+                            max_start = 1e35,
                             plot = True,
                             returns = True,
                             nb_samples = 20,
