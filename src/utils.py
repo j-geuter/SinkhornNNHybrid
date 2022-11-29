@@ -402,3 +402,25 @@ def compute_barycenter(
     net.doubletransform = False
     barycenter = torch.softmax(preBarycenter, dim=0)
     return barycenter
+
+def visualize_barycenters2(
+                            samples,
+                            iters,
+                            net,
+                            cost,
+                            rows,
+                            columns
+                            ):
+    """
+    Visualizes barycenters for a given list of sample batches.
+    :param samples: list containing a batch of samples at each position. Each batch is an iterable containing the samples; each sample is a one-dimensional tensor. Computes a barycenter for each batch.
+    :param iters: number of gradient descent steps.
+    :param net: network to use for barycenter computation.
+    :param cost: cost matrix.
+    :param rows: number of rows of visualization.
+    :param columns: number of columns of visualization.
+    """
+    barycenters = torch.zeros((rows*columns, samples[0][0].size()))
+    for i in range(len(samples)):
+        barycenters[i] = compute_barycenter(samples[i], net, cost, iters=iters, prints=False)
+    visualize_data(barycenters, rows, columns)

@@ -431,8 +431,8 @@ class DualApproximator:
                 if not relative:
                     loss = loss_function(self.predict(batch['d1'], batch['d2']), batch['u'])
                 else:
-                    approx_pot = self.predict(batch['d1'], batch['d2'])*batch['d1']*batch['d1'].size(1)
-                    true_pot = batch['u']*batch['d1']*batch['d1'].size(1)
+                    approx_pot = self.predict(batch['d1'], batch['d2'])*batch['d1']*(batch['d1'].size(1))
+                    true_pot = batch['u']*batch['d1']*(batch['d1'].size(1))
                     loss = loss_function(approx_pot, true_pot)
                 l += loss.item()
         l /= len(data)
