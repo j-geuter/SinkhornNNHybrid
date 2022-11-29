@@ -3,6 +3,7 @@ import math
 import ot
 from tqdm import tqdm
 import torch
+from torch.optim import Adam
 import numpy as np
 from scipy.stats import t as t_scipy
 

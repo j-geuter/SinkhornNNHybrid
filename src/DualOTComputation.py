@@ -538,10 +538,12 @@ class DualApproximator:
                 u = self.predict(batch['d1'], batch['d2'])
                 v = compute_c_transform(cost_norm*self.costmatrix, u)
                 ws_guess = compute_dual(batch['d1'], batch['d2'], u, v)
-                loss = loss_function(ws_guess, batch['cost'])
-                if rel:
+                if not rel:
+                    loss = loss_function(ws_guess, batch['cost'])
+                else:
                     zeros = torch.zeros(batch['cost'].size()).to(device)
-                    loss /= loss_function(zeros, batch['cost'])
+                    rel_error = (ws_guess - batch['cost'])/batch['cost']
+                    loss = loss_function(zeros, rel_error)
                 l += loss.item()
                 if return_ws:
                     ws_list.append((ws_guess, batch['cost']))
