@@ -420,7 +420,7 @@ def visualize_barycenters2(
     :param rows: number of rows of visualization.
     :param columns: number of columns of visualization.
     """
-    barycenters = torch.zeros((rows*columns, samples[0][0].size()))
+    barycenters = torch.zeros((rows*columns, samples[0][0].size().item()))
     for i in range(len(samples)):
         barycenters[i] = compute_barycenter(samples[i], net, cost, iters=iters, prints=False)
     visualize_data(barycenters, rows, columns)
