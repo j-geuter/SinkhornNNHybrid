@@ -18,7 +18,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def loss_max_ws(t, t2):
     """
-    A simple loss function that can be fed to `learn_ws` to learn the WS by simple gradient ascent on the WS computed
+    A simple loss function to learn the WS by gradient ascent on the WS computed
     from the potential instead of using a loss of that guess and the ground truth.
     :param t: tensor.
     :param t2: tensor.
@@ -335,87 +335,6 @@ class DualApproximator:
         for d in testdata:
             results.append(test_function(d, **kwargs))
         return results
-
-    def learn_ws(
-                    self,
-                    data_filename,
-                    loss_function = loss_max_ws,
-                    epochs = 1,
-                    batchsize = 100,
-                    verbose = 0,
-                    num_tests = 50,
-                    test_data = None,
-                    WS_perf = False,
-                    rel_WS = False,
-                    cost_norm_WS = 1
-                ):
-        """
-        Learns from data in file 'data_filename' using `loss_function` on the _squared_ Wasserstein-2 distance (i.e. the actual OT cost).
-        :param data_filename: file with training data.
-        :param loss_function: loss function to be used in backpropagation.
-        :param epochs: number of epochs performed on data.
-        :param batchsize: batch size used in all epochs.
-        :param verbose: if >0, collects performance information and returns it after the last epoch.
-        :param num_tests: number of times test data is collected if `verbose` >= 2.
-        :param test_data: test data used for testing if verbose is True.
-        :param WS_perf: if True, also collects performance information on Wasserstein distance approximation in addition to potential approximation.
-        :param rel_WS: if True, computes the relative Wasserstein distance errors instead. (Only if WS_perf==True.)
-        :param cost_norm_WS: an optional constant to scale the cost function by for Wassertein distance errors. (Only if WS_perf==True.)
-        :return: dict with key 'pot', and also 'WS' if `WS_perf`==True. At each key is a list containing a list for each test dataset in `test_data`. Each list contains information on the respective error (MSE on potential resp. L1 on Wasserstein distance) over the course of learning.
-        """
-        if test_data == None: # we oftentimes have a variable 'testdata' predefined.
-            try:
-                test_data = testdata
-            except:
-                pass
-        if test_data != None:
-            test_nb = len(test_data)
-        else:
-            test_nb = 0
-        dataset = data_to_list(data_filename)
-        if WS_perf:
-            performance = {'WS': [[] for i in range(test_nb)], 'pot': [[] for i in range(test_nb)]}
-        else:
-            performance = {'pot': [[] for i in range(test_nb)]}
-        if verbose >= 2:
-            for j in range(test_nb):
-                performance['pot'][j].append(self.test_potential(test_data[j]))
-            if WS_perf:
-                for j in range(test_nb):
-                    performance['WS'][j].append(self.test_ws(test_data[j], rel=rel_WS, cost_norm=cost_norm_WS))
-        self.net.train()
-        if verbose >=2 and (dataset['d1'].size(0)//(num_tests * batchsize)) == 0:
-            verbose = 1
-        for e in range(epochs):
-            perm = torch.randperm(dataset['d1'].size(0)).to(device)
-            for key in dataset.keys():
-                dataset[key] = dataset[key][perm]
-            for i in tqdm(range(dataset['d1'].size(0)//batchsize)):
-                d1 = dataset['d1'][i*batchsize:(i+1)*batchsize]
-                d2 = dataset['d2'][i*batchsize:(i+1)*batchsize]
-                x = torch.cat((d1, d2), 1).to(device)
-                u = self.net(x)
-                v = compute_c_transform(self.costmatrix, u)
-                ws_guess = compute_dual(d1, d2, u, v)
-                self.optimizer.zero_grad()
-                loss = loss_function(ws_guess, dataset['cost'][i*batchsize:(i+1)*batchsize])
-                loss.backward()
-                self.optimizer.step()
-                if verbose >= 2 and i % (dataset['d1'].size(0)//(num_tests * batchsize)) == 0 and i > 0:
-                    if WS_perf:
-                        for j in range(test_nb):
-                            performance['WS'][j].append(self.test_ws(test_data[j], rel=rel_WS, cost_norm=cost_norm_WS))
-                    for j in range(test_nb):
-                        performance['pot'][j].append(self.test_potential(test_data[j]))
-                    self.net.train()
-            if verbose == 1:
-                if WS_perf:
-                    for j in range(test_nb):
-                        performance['WS'][j].append(self.test_ws(test_data[j], rel=rel_WS, cost_norm=cost_norm_WS))
-                for j in range(test_nb):
-                    performance['pot'][j].append(self.test_potential(test_data[j]))
-        if verbose >= 1:
-            return performance
 
     def learn_multiple_files(
                                 self,

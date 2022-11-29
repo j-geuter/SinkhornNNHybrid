@@ -382,7 +382,7 @@ def compute_barycenter(
     :return: barycenter of input measures. One-dimensional tensor.
     """
     n = len(samples)
-    archetypes = torch.cat((samples), 0).to(device)
+    archetypes = torch.cat(([sample[None, :] for sample in samples]), 0).to(device)
     preBarycenter = torch.ones((784)).to(device) #initialize the variable
     preBarycenter.requires_grad = True #making the variable gradiable
     optimizer = Adam([preBarycenter], lr=0.4)
