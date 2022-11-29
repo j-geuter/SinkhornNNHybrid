@@ -196,7 +196,7 @@ def iterations_per_marginal(
     l = int(math.sqrt(data[0]['d1'].size(1)))
     c = euclidean_cost_matrix(l, l, 2, True)
     n = data[0]['d1'].size(0)//nb_samples
-    for i in range(len(data)):
+    for i in tqdm(range(len(data))):
         for j in range(len(inits)):
             for k in range(nb_samples):
                 iters = 0
