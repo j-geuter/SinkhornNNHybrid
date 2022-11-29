@@ -216,9 +216,9 @@ def iterations_per_marginal(
                 returns[i][j].append([iters])
     for i in range(len(data)):
         for j in range(len(inits)):
-            results[i][j] = compute_mean_conf(results[i][j], conf)
-            results[i][j] = (results[i][j][1], results[i][j][1]-results[i][j][0])
-    return results
+            returns[i][j] = compute_mean_conf(returns[i][j], conf)
+            returns[i][j] = (returns[i][j][1], returns[i][j][1]-returns[i][j][0])
+    return returns
 
 
 
