@@ -170,7 +170,8 @@ def iterations_per_marginal(
                                 max_start = 1e35,
                                 conf = .95,
                                 nb_samples = 20,
-                                stepsize = 10
+                                stepsize = 10,
+                                start_iter = 0
                             ):
     """
     Computes the average number of iterations needed for a specific marginal constraint violation threshold `marg` alongside its `conf` confidence interval.
@@ -184,6 +185,7 @@ def iterations_per_marginal(
     :param conf: confidence for confidence interval.
     :param nb_samples: number of subsets to split data into.
     :param stepsize: stepsize with which the number of iterations is increased until the desired threshold is attained.
+    :param start_iter: a number of iterations to start with (which should lie below the required number of iterations).
     :return: a list of lists, one for each test dataset, containing yet another list for each initialization, with a two-tuple for each test dataset containing the mean and the deviation of the confidence interval to either side.
     """
     returns = [[[] for j in range(len(inits))] for i in range(len(testdata))]
@@ -199,7 +201,7 @@ def iterations_per_marginal(
     for i in tqdm(range(len(data))):
         for j in range(len(inits)):
             for k in range(nb_samples):
-                iters = 0
+                iters = start_iter
                 val = marg + 1
                 while val > marg:
                     iters += stepsize
