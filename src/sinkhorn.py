@@ -171,7 +171,8 @@ def iterations_per_marginal(
                                 conf = .95,
                                 nb_samples = 20,
                                 stepsize = 10,
-                                start_iter = 0
+                                start_iter = 0,
+                                prints = False
                             ):
     """
     Computes the average number of iterations needed for a specific marginal constraint violation threshold `marg` alongside its `conf` confidence interval.
@@ -186,6 +187,7 @@ def iterations_per_marginal(
     :param nb_samples: number of subsets to split data into.
     :param stepsize: stepsize with which the number of iterations is increased until the desired threshold is attained.
     :param start_iter: a number of iterations to start with (which should lie below the required number of iterations).
+    :param prints: if True, activates print statements.
     :return: a list of lists, one for each test dataset, containing yet another list for each initialization, with a two-tuple for each test dataset containing the mean and the deviation of the confidence interval to either side.
     """
     returns = [[[] for j in range(len(inits))] for i in range(len(testdata))]
@@ -209,6 +211,8 @@ def iterations_per_marginal(
                         val = sinkhorn(data[i]['d1'][k*n:(k+1)*n], data[i]['d2'][k*n:(k+1)*n], c, eps, max_iter=iters, log=True, max_start=max_start, min_start=min_start)['average marginal constraint violation']
                     else:
                         val = sinkhorn(data[i]['d1'][k*n:(k+1)*n], data[i]['d2'][k*n:(k+1)*n], c, eps, max_iter=iters, start=torch.exp(compute_c_transform(c, inits[j](torch.cat((data[i]['d1'][k*n:(k+1)*n], data[i]['d2'][k*n:(k+1)*n]), 1)).detach())/eps), log=True, max_start=max_start, min_start=min_start)['average marginal constraint violation']
+                    if prints:
+                        print(val)
                 returns[i][j].append([iters])
     for i in range(len(data)):
         for j in range(len(inits)):
