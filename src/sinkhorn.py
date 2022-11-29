@@ -186,7 +186,7 @@ def iterations_per_marginal(
     :param conf: confidence for confidence interval.
     :param nb_samples: number of subsets to split data into.
     :param stepsize: stepsize with which the number of iterations is increased until the desired threshold is attained.
-    :param start_iter: a number of iterations to start with (which should lie below the required number of iterations).
+    :param start_iter: a number of iterations to start with (which should lie below the required number of iterations). Can also be a list with an entry for each test dataset.
     :param prints: if True, activates print statements.
     :return: a list of lists, one for each test dataset, containing yet another list for each initialization, with a two-tuple for each test dataset containing the mean and the deviation of the confidence interval to either side.
     """
@@ -203,7 +203,7 @@ def iterations_per_marginal(
     for i in tqdm(range(len(data))):
         for j in range(len(inits)):
             for k in range(nb_samples):
-                iters = start_iter
+                iters = start_iter if isinstance(start_iter, int) else start_iter[i]
                 val = marg + 1
                 while val > marg:
                     iters += stepsize
