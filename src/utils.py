@@ -422,5 +422,5 @@ def visualize_barycenters2(
     """
     barycenters = torch.zeros((rows*columns, samples[0][0].size(0)))
     for i in range(len(samples)):
-        barycenters[i] = compute_barycenter(samples[i], net, cost, iters=iters, prints=False)
+        barycenters[i] = compute_barycenter(samples[i], net, cost, iters=iters, prints=False).detach().to('cpu')
     visualize_data(barycenters, rows, columns)
