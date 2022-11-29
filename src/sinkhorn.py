@@ -200,6 +200,7 @@ def iterations_per_marginal(
         for j in range(len(inits)):
             for k in range(nb_samples):
                 iters = 0
+                val = marg + 1
                 while val > marg:
                     iters += stepsize
                     if inits[j] == None:
