@@ -370,7 +370,8 @@ def compute_barycenter(
                         net,
                         cost,
                         iters = 30,
-                        prints = True
+                        prints = True,
+                        start = None
                         ):
     """
     Computes a barycenter of `samples` using gradient descent and a network only without Sinkhorn.
@@ -379,11 +380,15 @@ def compute_barycenter(
     :param cost: cost matrix.
     :param iters: number of gradient steps.
     :param prints: if True, prints the loss in every iteration.
+    :param start: if given, uses `start` as a starting distribution.
     :return: barycenter of input measures. One-dimensional tensor.
     """
     n = len(samples)
     archetypes = torch.cat(([sample[None, :] for sample in samples]), 0).to(device)
-    preBarycenter = torch.ones((784)).to(device) #initialize the variable
+    if start == None:
+        preBarycenter = torch.ones((784)).to(device) #initialize the variable
+    else:
+        preBarycenter = start.to(device)
     preBarycenter.requires_grad = True #making the variable gradiable
     optimizer = Adam([preBarycenter], lr=0.4)
     lamb = lambda epoch: 0.9 ** epoch
@@ -409,18 +414,26 @@ def visualize_barycenters2(
                             net,
                             cost,
                             rows,
-                            columns
+                            columns,
+                            start = None
                             ):
     """
     Visualizes barycenters for a given list of sample batches.
-    :param samples: list containing a batch of samples at each position. Each batch is an iterable containing the samples; each sample is a one-dimensional tensor. Computes a barycenter for each batch.
+    :param samples: list containing a batch of samples at each position. Each batch is a two-dimensional tensor containing the samples. Computes a barycenter for each batch.
     :param iters: number of gradient descent steps.
     :param net: network to use for barycenter computation.
     :param cost: cost matrix.
     :param rows: number of rows of visualization.
     :param columns: number of columns of visualization.
+    :param start: if None, no `start` argument is passed to `compute_barycenter`. If set to 'single', uses each batch's first sample as `start`. If set to 'avg', uses each batch's average as `start`.
     """
     barycenters = torch.zeros((rows*columns, samples[0][0].size(0)))
     for i in range(len(samples)):
-        barycenters[i] = compute_barycenter(samples[i], net, cost, iters=iters, prints=False).detach().to('cpu')
+        if start == 'single':
+            start_i = samples[i][0]
+        elif start == 'avg':
+            start_i = samples[i].sum(0)/len(samples[i])
+        else:
+            start_i = None
+        barycenters[i] = compute_barycenter(samples[i], net, cost, iters=iters, prints=False, start=start_i).detach().to('cpu')
     visualize_data(barycenters, rows, columns)
