@@ -15,6 +15,7 @@ The folder `Data` contains all four test datasets used in the paper: 'random', '
 You can then load all test datafiles with the `load_data` function from `datacreation.py`:
 
 ```python
+from datacreation import load_data
 testdata = [load_data('Data/random.py'), load_data('Data/teddies.py'), load_data('Data/MNIST.py'), load_data('Data/CIFAR.py')]
 ```
 
@@ -24,6 +25,7 @@ If you wish to create and train your own model, you can do so using the `DualApp
 E.g., to create and train a model on 10,000 unique training samples over 5 epochs, run:
 
 ```python
+from DualOTComputation import DualApproximator
 d = DualApproximator()
 d.learn_potential(n_samples=10000)
 ```
@@ -36,6 +38,8 @@ You can also collect performance information on the test datasets using the `ver
 To obtain the results from the paper, you'll need to run the `compare_iterations` function from `sinkhorn.py` for each test dataset. The results can then be saved using `save_data` from `datacreation.py`. I.e. with `testdata` as above:
 
 ```python
+from sinkhorn import compare_iterations
+from datacreation import save_data
 d.net.eval()
 results = []
 for t in testdata:
@@ -51,12 +55,14 @@ You can plot various results using the `plot_conf` function from `utils.py`.
 Load results with `load_anydata` from `datacreation.py`:
 
 ```python
+from datacreation import load_anydata
 results = load_anydata('results.py')
 ```
 
 Plot error on the marginal constraints:
 
 ```python
+from utils import plot_conf
 plot_conf(2500, results[0][0]['marg']+results[1][0]['marg']+results[2][0]['marg']+results[3][0]['marg'], ['default', 'net']*4, 'number of iterations', 'marginal constraint violation', titles=['random', 'teddies', 'MNIST', 'CIFAR'], separate_plots=[[0,1], [2,3], [4,5], [6,7]], rows=2, columns=2, slice=(5,24), scale_y=1/784**2)
 ```
 
@@ -75,6 +81,7 @@ plot_conf(results[0][1][1]+results[1][1][1]+results[2][1][1]+results[3][1][1], r
 To compute the number of iterations needed for a particular bound on the marginal constraint violation, run the `iterations_per_marginal` function in `sinkhorn.py`:
 
 ```python
+from sinkhorn import iterations_per_marginal
 iters = iterations_per_marginal(1e-2, testdata, [d.net, None], stepsize=25) # for a 1e-2 marginal constraint violation. This function runs a lot faster if you specify the start_iter argument
 ```
 
