@@ -20,14 +20,20 @@ testdata = [load_data('Data/random.py'), load_data('Data/teddies.py'), load_data
 ```
 
 ## Creating a Model
-If you run `DualOTComputation.py`, it will automatically create a fully trained model `d` using the same approximator and generator used for all experiments in the paper, which are saved in the `Models` folder.
-If you wish to create and train your own model, you can do so using the `DualApproximator` class in that file.
-E.g., to create and train a model on 10,000 unique training samples over 5 epochs, run:
+Unfortunately, the file containing the fully trained network's weights needs to be uploaded with Git LFS due to its size, and Git LFS seems to corrupt the file. Hence, the fully trained approximator and generator used in the paper are available for download in [this Google Drive folder](https://drive.google.com/drive/folders/1My0jXBqjDs4LVJtSX8gi45z0v9WMicNV?usp=sharing).
+Assuming you saved the files as `net100k.pt` and `gen100k.pt`, you can then create a model with the two fully trained nets by running:
+
+```python
+from src.DualOTComputation import DualApproximator
+d = DualApproximator(model='net100k.pt', gen_model='gen100k.pt')
+```
+
+If you wish to train your own model, you can do so using using the `learn_potential` function in `DualOTComputation.py`:
 
 ```python
 from src.DualOTComputation import DualApproximator
 d = DualApproximator()
-d.learn_potential(n_samples=10000)
+d.learn_potential(n_samples=10000) # trains on 10,000 samples for 5 epochs, i.e. 50,000 samples total
 ```
 
 The `learn_potential` function in `DualOTComputation.py` offers various optional arguments. If you wish to print the loss alongside sample images of the generator during training, pass `prints=True`.
