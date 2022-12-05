@@ -19,7 +19,7 @@ from src.datacreation import load_data
 testdata = [load_data('Data/random.py'), load_data('Data/teddies.py'), load_data('Data/MNIST.py'), load_data('Data/CIFAR.py')]
 ```
 
-## Creating a Model
+## Create a Model
 Unfortunately, the file containing the fully trained network's weights needs to be uploaded with Git LFS due to its size, and Git LFS seems to corrupt the file. Hence, the fully trained approximator and generator used in the paper are available for download in [this Google Drive folder](https://drive.google.com/drive/folders/1My0jXBqjDs4LVJtSX8gi45z0v9WMicNV?usp=sharing).
 Assuming you saved the files as `net100k.pt` and `gen100k.pt`, you can then create a model with the two fully trained nets by running:
 
