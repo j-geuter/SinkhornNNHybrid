@@ -10,7 +10,7 @@ The project is CUDA compatible.
 We will first have a quick look at the six files containing all code, before going over how to replicate the results from the thesis in the next section.
 
 ### costmatrix
-Euclidean distance cost matrices can be constructed using the `euclidean_cost_matrix` function which takes as input the two image dimensions and an 'exponent' parameter, which is usually set to $2$ corresponding to the squared Euclidean distance. A fourth boolean parameter `tens` lets you choose whether the matrix should be a `torch.tensor` object or a `numpy.array`. In most cases, you will call this function as `euclidean_cost_matrix(28, 28, 2, True)`.
+Euclidean distance cost matrices can be constructed using the `euclidean_cost_matrix` function which takes as input the two image dimensions and an 'exponent' parameter, which is usually set to 2 corresponding to the squared Euclidean distance. A fourth boolean parameter `tens` lets you choose whether the matrix should be a `torch.tensor` object or a `numpy.array`. In most cases, you will call this function as `euclidean_cost_matrix(28, 28, 2, True)`.
 
 ### datacreation
 This file contains various functions that let you create and save datasets for training and testing. Usually, data `d` will come in the form of a list, where each item is a dictionary
@@ -20,10 +20,10 @@ and save data files using `pickle`. Another important function in this file is `
 also needs as input the cost matrix `cost` and supports multiple samples at once.   
 Most important for generating training data similar to the data used in the thesis is the
 `generate_simple_data` function, which takes as input a `file_name` which determines the location where the data set will be saved, the side length `length` of the distributions
-(e.g. $28$), number of samples in the file `n_samples` (note that setting `n_samples` too high might cause memory overload; a good approach is saving $100,000$ samples per file),
+(e.g. 28), number of samples in the file `n_samples` (note that setting `n_samples` too high might cause memory overload; a good approach is saving 100,000 samples per file),
 and a keyword argument `mult` which corresponds to the parameter $k_1$ from the thesis. It is also possible to pass a keyword argument `sink=True` in order to use the Sinkhorn algorithm for sample generation instead. This function can also be used for randomly generated test data.
 To produce test data sets which are not random, but originate from data sets such as MNIST, use the `generate_dataset_data` function. It takes as input a `name` (location where
-the data will be saved), a parameter `n_files` which controls how many data sets will be generated (and can most often be set to $1$), and, importantly, a `dataloader` parameter
+the data will be saved), a parameter `n_files` which controls how many data sets will be generated (and can most often be set to 1), and, importantly, a `dataloader` parameter
 which is a `torch.utils.data.DataLoader` object and can be wrapped around a `torchvision.datasets` data set such as `torchvision.datasets.MNIST`.  
 Example (assuming there exists a subfolder `Data`):  
 
@@ -87,9 +87,9 @@ This file contains various functions for creating different types of plots from 
 being the number of samples, $dim$ the dimension of the samples, and $l$ the side length.  
 `compute_dual` takes as input distributions `alpha` and `beta` and dual potentials `u` and `v` and computes the respective dual problem's value. All inputs need to be of dimension two and multiple samples can be processed at once.  
 `compute_mean_conf` lets you compute a confidence interval from a data series in time. It takes as input `data`, which is a list of lists or list-like objects. Each item in `data` corresponds to one set of samples taken over time, e.g. the length of `data` equals the sample size at each point in time and the length of each item in `data` equals the number of time
-steps that data was collected at. The function also takes as input a parameter `conf`, the desired confidence, i.e. this can e.g. be set to `.95` for a $95$ percent confidence interval.  
+steps that data was collected at. The function also takes as input a parameter `conf`, the desired confidence, i.e. this can e.g. be set to `.95` for a 95% confidence interval.  
 `plot` is a simple function that lets you plot multiple types of data at once, collected over the same `x`-values.  
-`plot_conf` lets you plot various data time series alongside their confidence intervals, which will be shown as shaded areas around the plots. It takes as input `x`-values (which can also equal an integer in which case the x-values are interpolating between $0$ and that integer) and a list `y` where each item is a three-element list, where the first one corresponds to the lower values of
+`plot_conf` lets you plot various data time series alongside their confidence intervals, which will be shown as shaded areas around the plots. It takes as input `x`-values (which can also equal an integer in which case the x-values are interpolating between 0 and that integer) and a list `y` where each item is a three-element list, where the first one corresponds to the lower values of
 a confidence interval, the second one to the mean values, and the third one to the upper values of a confidence interval. This corresponds to the output generated by `compute_mean_conf`. It also takes as input `labels` corresponding to the labels of each item in `y`, `x_label` and `y_label` corresponding to the labels on the x- and y-axis, optional `titles` for each plot, and an optional parameter `separate_plots`. If this is not passed to the function, all `y` items will appear in a single plot. `separate_plots` can be a list of tuples, where each tuple corresponds to the indices from `y` which should appear in the same plot. If, e.g., the first three items should appear in one plot, and the fourth item in a second plot, set `separete_plots=[(0,1,2), (3)]`. In case `separete_plots` is given, the optional `rows` and `columns` parameters let you control how many rows and columns the plots should be placed in.  
 Example (with `d` and `testdata` as before):  
 
@@ -135,7 +135,7 @@ WS_perf  = d.average_performance('Data/training_file_0.py', d.learn_ws, test_dat
 ```
 
 Note that calling `average_performance` resets all learnable parameters of the `net` attribute, e.g. deletes all learning progress!
-It returns, for each test dataset in `test_data`, three arrays, where the second one corresponds to the average performance over 10 instances of the network, measured at $30$ points in time during training (can be adjusted with the `num_tests` parameter).
+It returns, for each test dataset in `test_data`, three arrays, where the second one corresponds to the average performance over 10 instances of the network, measured at 30 points in time during training (can be adjusted with the `num_tests` parameter).
 Now the results can be plotted using the `plot_conf` function in `utils.py`:
 
 ```python
@@ -174,7 +174,7 @@ for t in testdata:
   results.append(compare_iterations(t[:10], [None, d.net], ['default', 'net'], max_iter=2500, eps=.2, min_start=1e-35, max_start=1e35, plot=False, timeit=True))
 ```
 Now `r = results[i]` contains the results for the respective test dataset. `r[0]['WS']` and `r[0]['marg']` contain information on the Wasserstein distance and dual potential errors;
-`r[1]` on the time it took for computations. In each of these locations, the values for the default initialization can be accessed at position `[0]` and for the network at position `[1]`. This will give you a 3-tuple, where each item is an array, the first one being the lower bound on the $95\%$ confidence interval, the second one the mean, and the third one the upper bound on the confidence interval. So for example, the upper bound on the $95\%$ confidence interval of the marginal constraint error of the default initialization for the first test dataset can be found at `results[0][0]['marg'][0][2]`. The results can be visualized with the `plot_conf` function from `utils.py` again, so for example for visualizing the errors on the marginal constraint alongside the confidence intervals across all four test datasets run:
+`r[1]` on the time it took for computations. In each of these locations, the values for the default initialization can be accessed at position `[0]` and for the network at position `[1]`. This will give you a 3-tuple, where each item is an array, the first one being the lower bound on the 95% confidence interval, the second one the mean, and the third one the upper bound on the confidence interval. So for example, the upper bound on the 95% confidence interval of the marginal constraint error of the default initialization for the first test dataset can be found at `results[0][0]['marg'][0][2]`. The results can be visualized with the `plot_conf` function from `utils.py` again, so for example for visualizing the errors on the marginal constraint alongside the confidence intervals across all four test datasets run:
 
 ```python
 from utils import plot_conf
