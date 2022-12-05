@@ -78,7 +78,9 @@ class DualApproximator:
         Loads a model saved in `path1` and `path2`.
         """
         self.net.load_state_dict(torch.load(path1))
+        self.net.to(device)
         self.gen_net.load_state_dict(torch.load(path2))
+        self.gen_net.to(device)
 
     def save(self, path1, path2):
         """

@@ -3,7 +3,7 @@ Welcome to the repository of the paper [Generative Adversarial Learning of Sinkh
 The paper aims at warm-starting the Sinkhorn algorithm with initializations computed by a neural network, which is trained in an adversarial fashion similar to a GAN using a second, generating neural network.
 It is based on the Master's thesis 'A Sinkhorn-NN Hybrid Algorithm' by Jonathan Geuter, but differs from the thesis in many aspects. The thesis, along with its codebase and a comprehensive README, can be found in the [thesis branch](https://github.com/j-geuter/SinkhornNNHybrid/tree/thesis) of this repository. The main branch contains the codebase of the paper (which differs significantly from the thesis' codebase).
 
-The code is structured in six files, `DualOTComputation.py`, `networks.py`, `utils.py`, `sinkhorn.py`, `costmatrix.py` and `datacreation.py`. The main files you'll need reproduce the results from the paper are `DualOTComputation.py` and `sinkhorn.py`, and `utils.py` contains some useful functions that let you visualize or plot data. To generate testing data first, you'll need `datacreation.py`. `costmatrix.py` contains a function to create cost matrices based on the Euclidean distance, and `networks.py` the neural network classes for the approximator and generator; you won't need to actively use either of these files unless you want to define your own cost function or network structure.  
+The code is structured in six files, `DualOTComputation.py`, `networks.py`, `utils.py`, `sinkhorn.py`, `costmatrix.py` and `datacreation.py`. The main files you'll need reproduce the results from the paper are `DualOTComputation.py` and `sinkhorn.py`, and `utils.py` contains some useful functions that let you visualize or plot data. To generate testing data, you'll need `datacreation.py`; however, all test datasets used in the paper are available in the `Data` folder. `costmatrix.py` contains a function to create cost matrices based on the Euclidean distance, and `networks.py` the neural network classes for the approximator and generator; you won't need to actively use either of these files unless you want to define your own cost function or network structure.  
 The `requirements.txt` file lists all dependencies and their versions.  
 The project is CUDA compatible.
 
@@ -40,7 +40,7 @@ The `learn_potential` function in `DualOTComputation.py` offers various optional
 If you want to learn using a loss on the transport distance (as outlined in Section 5.2 of the paper) instead of one on the dual potential, pass `learn_WS=True`.
 You can also collect performance information on the test datasets using the `verbose`, `num_tests`, and `test_data` arguments, where you can pass `test_data=testdata` with `testdata` defined as above. The function will then return performance information upon completion.
 
-## Results
+## Obtain Results
 To obtain the results from the paper, you'll need to run the `compare_iterations` function from `sinkhorn.py` for each test dataset. The results can then be saved using `save_data` from `datacreation.py`. I.e. with `testdata` as above:
 
 ```python
@@ -75,13 +75,15 @@ plot_conf(2500, results[0][0]['marg']+results[1][0]['marg']+results[2][0]['marg'
 Plot relative Wasserstein distance errors w.r.t. the number of Sinkhorn iterations:
 
 ```python
-plot_conf(2500, results[0][0]['WS']+results[1][0]['WS']+results[2][0]['WS']+results[3][0]['WS'], ['default', 'net']*4, 'number of iterations', 'Relative L1 error on WS distance', titles=['random', 'teddies', 'MNIST', 'CIFAR'], separate_plots=[[0,1], [2,3], [4,5], [6,7]], rows=2, columns=2, slice=(5,24))
+from src.utils import plot_conf
+plot_conf(2500, results[0][0]['WS']+results[1][0]['WS']+results[2][0]['WS']+results[3][0]['WS'], ['default', 'net']*4, 'number of iterations', 'relative L1 error on WS distance', titles=['random', 'teddies', 'MNIST', 'CIFAR'], separate_plots=[[0,1], [2,3], [4,5], [6,7]], rows=2, columns=2, slice=(5,24))
 ```
 
 Plot relative Wasserstein distance errors w.r.t. the computation time:
 
 ```python
-plot_conf(results[0][1][1]+results[1][1][1]+results[2][1][1]+results[3][1][1], results[0][0]['WS']+results[1][0]['WS']+results[2][0]['WS']+results[3][0]['WS'], ['default', 'net']*4, 'number of iterations', 'Relative L1 error on WS distance', titles=['random', 'teddies', 'MNIST', 'CIFAR'], separate_plots=[[0,1], [2,3], [4,5], [6,7]], rows=2, columns=2, slice=(5,24))
+from src.utils import plot_conf
+plot_conf([results[0][1][0][1], results[0][1][1][1], results[1][1][0][1], results[1][1][1][1], results[2][1][0][1], results[2][1][1][1], results[3][1][0][1], results[3][1][1][1]], results[0][0]['WS']+results[1][0]['WS']+results[2][0]['WS']+results[3][0]['WS'], ['default', 'net']*4, 'time in s', 'relative L1 error on WS distance', titles=['random', 'teddies', 'MNIST', 'CIFAR'], separate_plots=[[0,1], [2,3], [4,5], [6,7]], rows=2, columns=2, slice=(5,24))
 ```
 
 To compute the number of iterations needed for a particular bound on the marginal constraint violation, run the `iterations_per_marginal` function in `sinkhorn.py`:

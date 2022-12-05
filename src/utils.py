@@ -243,7 +243,7 @@ def plot_conf(
             ):
     """
     Plots data containing average values alongside their confidence intervals as shaded areas.
-    :param x: list of lists containing x values. Can also be an integer, in which case it is converted to a list of numbers interpolating between 0 and that integer.
+    :param x: list of lists or arrays containing x values. Can also be an integer, in which case it is converted to a list of numbers interpolating between 0 and that integer.
     :param y: list of lists. Each contains three lists, the first corresponding to the lower confidence bound, the second to the average, the third to the upper confidence bound.
     :param labels: list of same length as `y` containing the labels for each plot.
     :param x_label: label for x axis.
@@ -260,7 +260,7 @@ def plot_conf(
     """
     if isinstance(x, int):
         x = [i*x/(len(y[0][0])-1) for i in range(len(y[0][0]))]
-    if not isinstance(x[0], list):
+    if not isinstance(x[0], list) and not isinstance(x[0], np.ndarray):
         x = [x for i in range(len(y))]
     n = len(y)
     if slice != None:
