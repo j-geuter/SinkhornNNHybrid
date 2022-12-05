@@ -255,7 +255,7 @@ def plot_conf(
     :param rows: number of rows for subplots. If None, all subplots will be in one row.
     :param columns: number of columns for subplots.
     :param slice: optional parameter with which one can determine a slice of each element in y to be used instead. If given, this is a tuple of two ints indicating the slice.
-    :param scale_y: scales all `y` values by `scale_y`.
+    :param scale_y: scales all `y` values by `scale_y`, e.g. to rescale values to a cost function in the unit square.
     :return: None.
     """
     if isinstance(x, int):
@@ -320,7 +320,7 @@ def plot_conf(
                 fig.legend(handles, labels, loc='lower center', ncol=len(labels))
         fig.show()
 
-def visualize_barycenters(
+def interpolate_barycenters(
                         samples,
                         net,
                         iters = 30,
@@ -409,7 +409,7 @@ def compute_barycenter(
     barycenter = torch.softmax(preBarycenter, dim=0)
     return barycenter
 
-def visualize_barycenters2(
+def visualize_barycenters(
                             samples,
                             iters,
                             net,
