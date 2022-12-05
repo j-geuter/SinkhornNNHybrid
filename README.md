@@ -4,11 +4,12 @@ The paper aims at warm-starting the Sinkhorn algorithm with initializations comp
 It is based on the Master's thesis 'A Sinkhorn-NN Hybrid Algorithm' by Jonathan Geuter, but differs from the thesis in many aspects. The thesis, along with its codebase and a comprehensive README, can be found in the [thesis branch](https://github.com/j-geuter/SinkhornNNHybrid/tree/thesis) of this repository. The main branch contains the codebase of the paper (which differs significantly from the thesis' codebase).
 
 The code is structured in six files, `DualOTComputation`, `networks`, `utils`, `sinkhorn`, `costmatrix` and `datacreation`. The main files you'll need reproduce the results from the paper are `DualOTComputation` and `sinkhorn`, and `utils` contains some useful functions that let you visualize or plot data. To generate testing data first, you'll need the
-`datacreation` file. The `costmatrix` file contains a function to create cost matrices based on the Euclidean distance, and `networks` the neural network classes; you won't need to actively use either of these files unless you want to define your own cost function or network structure.
+`datacreation` file. The `costmatrix` file contains a function to create cost matrices based on the Euclidean distance, and `networks` the neural network classes for the approximator and generator; you won't need to actively use either of these files unless you want to define your own cost function or network structure.  
 The `requirements.txt` file lists all dependencies and their versions.  
 The project is CUDA compatible.
 
-# Reproduce Paper Results
+
+# Reproduce Results
 
 ## Test Data
 The folder `Data` contains all four test datasets used in the paper: 'random', 'teddies', 'MNIST' and 'CIFAR'. If you wish to produce your own test datasets, you can do so using the `generate_dataset_data` function in the `datacreation` file.
@@ -30,7 +31,18 @@ d.learn_potential(n_samples=10000)
 
 The `learn_potential` function offers various optional arguments. If you wish to print the loss alongside sample images of the generator during training, pass `prints=True`.
 If you want to learn using a loss on the transport distance (as outlined in Section 5.2 of the paper) instead of one on the dual potential, pass `learn_WS=True`.
-You can also collect performance information on the test datasets using the `verbose`, `num_tests`, `test_data`
+You can also collect performance information on the test datasets using the `verbose`, `num_tests`, and `test_data` arguments, where you can pass `test_data=testdata` with `testdata` defined as above. The function will then return performance information upon completion.
+
+## Results
+To obtain the results from the paper, you'll need to run the `compare_iterations` function for each test dataset, i.e. with `testdata` as above:
+
+```python
+d.net.eval()
+results = []
+for t in testdata:
+  results.append(compare_iterations(t[:10], [None, d.net], ['default', 'net'], max_iter=2500, eps=.2, min_start=1e-35, max_start=1e35, plot=False, timeit=True))
+```
+
 
 
 Welcome to the SinkhornNNHybrid repository! This repo provides the PyTorch implementation for the thesis 'A Sinkhorn-NN Hybrid Algorithm for Optimal

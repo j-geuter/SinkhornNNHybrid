@@ -125,7 +125,7 @@ class DualApproximator:
                             num_tests = 30,
                             test_data = None,
                             WS_perf = False,
-                            rel_WS = False,
+                            rel_WS = True,
                             cost_norm_WS = 1,
                             gen_images = True,
                             learn_gen = 1,
@@ -336,76 +336,6 @@ class DualApproximator:
             results.append(test_function(d, **kwargs))
         return results
 
-    def learn_multiple_files(
-                                self,
-                                filename,
-                                start,
-                                end,
-                                f,
-                                lr = None,
-                                meta_epochs = 1,
-                                loss_function = F.mse_loss,
-                                epochs = 1,
-                                batchsize = 100,
-                                verbose = 0,
-                                num_tests = 50,
-                                test_data = None,
-                                WS_perf = False,
-                                save_points = None,
-                                save_name = None
-                            ):
-        """
-        Wraps a learning function `f` to call it on multiple files of format `filename`_`start`.py, `filename`_{`start`+1}', ..., `filename`_`end`.
-        :param filename: determines files `filename`_`start`.py to `filename`_`end`.py to be used as files.
-        :param start: index of first file.
-        :param end: index of last file.
-        :param f: learning function.
-        :param lr: list of length `meta_epochs`*(`end`+1-`start`) containing learning rates. If None, learning rate remains unchanged.
-        :param meta_epochs: number of times all files are used for training.
-        :param loss_function: loss function to be used in backpropagation.
-        :param epochs: number of epochs performed on data during each meta epoch.
-        :param batchsize: batch size.
-        :param verbose: verbose parameter passed to the learning function.
-        :param num_tests: number of times test data is collected during each call of the learning function if `verbose` >= 2.
-        :param test_data: test data used for testing if verbose is True.
-        :param WS_perf: if True, also collects performance data on the WS distance approximation.
-        :param save_points: optional list containing tuples indicating the points where the network will be saved. First entry indicates meta epoch, second indicates file number.
-        :param save_name: file name for saving networks. Will be saved as `save_name`_`i`_`j`.pt where `i` is the meta epoch and `j` the file name number.
-        :return: dict with key 'pot', and also 'WS' if `WS_perf`==True. At each key is a list containing a list for each test dataset in `test_data`. Each list contains information on the respective error (MSE on potential resp. L1 on Wasserstein distance) over the course of learning.
-        """
-        if save_points == None:
-            save_points = []
-        if test_data:
-            test_nb = len(test_data)
-        else:
-            test_nb = 0
-        if WS_perf:
-            performance = {'WS': [[] for i in range(test_nb)], 'pot': [[] for i in range(test_nb)]}
-        else:
-            performance = {'pot': [[] for i in range(test_nb)]}
-        for j in range(meta_epochs):
-            for i in range(start, end + 1):
-                if lr:
-                    self.lr = lr[j*(end + 1 - start) + i]
-                    self.optimizer = Adam(self.net.parameters(), lr=self.lr)
-                print(f'Metaepoch {j}, file {i} of {end}.')
-                log = f(f'{filename}_{i}.py', loss_function=loss_function, epochs=epochs, batchsize=batchsize, verbose=verbose, num_tests=num_tests, test_data=test_data)
-                if (j,i) in save_points:
-                    d.save(f'{save_name}_{j}_{i}.pt')
-                if j == 0 and i == 0:
-                    if WS_perf:
-                        for l in range(test_nb):
-                            performance['WS'][l] += log['WS'][l]
-                    for l in range(test_nb):
-                        performance['pot'][l] += log['pot'][l]
-                else:
-                    if WS_perf:
-                        for l in range(test_nb):
-                            performance['WS'][l] += log['WS'][l][1:] # remove the first value as it's the same as the last value from the previous iteration
-                    for l in range(test_nb):
-                        performance['pot'][l] += log['pot'][l][1:]
-        return performance
-
     def predict(self, a, b):
         """
         Concatenates input distributions `a` and `b` to compute the network's output.
@@ -417,11 +347,12 @@ class DualApproximator:
             out = self.net(x)
         return out
 
-    def test_potential(self, data, loss_function = F.mse_loss, relative = False):
+    def test_potential(self, data, loss_function = F.mse_loss, relative = False, scale = 1):
         '''
         Tests the network on test data 'data'.
         :param data: data used for testing. Should be a list with each item being a dictionary with keys `d1`, `d2` and `u` which contain the two distributions and the dual potential as two-dimensional tensors.
         :param relative: if True, computes the error relative to the distributions.
+        :param scale: A scaling factor to scale the error by. Can e.g. be used to rescale a cost function to the cost in the unit square.
         :return: average `loss_function` error on the dual potential.
         '''
         self.net.eval()
