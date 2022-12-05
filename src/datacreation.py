@@ -11,8 +11,8 @@ import random
 import pickle
 import os
 
-from costmatrix import euclidean_cost_matrix
-from sinkhorn import sinkhorn
+from src.costmatrix import euclidean_cost_matrix
+from src.sinkhorn import sinkhorn
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 

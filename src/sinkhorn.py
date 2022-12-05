@@ -5,9 +5,9 @@ import time
 import torch.nn.functional as F
 from tqdm import tqdm
 
-from utils import compute_c_transform, compute_mean_conf, compute_dual, plot_conf
-from costmatrix import euclidean_cost_matrix
-from networks import FCNN
+from src.utils import compute_c_transform, compute_mean_conf, compute_dual, plot_conf
+from src.costmatrix import euclidean_cost_matrix
+from src.networks import FCNN
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 

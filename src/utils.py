@@ -7,7 +7,7 @@ from torch.optim import Adam
 import numpy as np
 from scipy.stats import t as t_scipy
 
-from costmatrix import euclidean_cost_matrix
+from src.costmatrix import euclidean_cost_matrix
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 

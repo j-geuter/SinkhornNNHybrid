@@ -8,10 +8,10 @@ from torch.optim.lr_scheduler import LambdaLR
 import ot
 
 
-from networks import FCNN, genNet
-from costmatrix import euclidean_cost_matrix
-from datacreation import load_data, data_to_list
-from utils import compute_c_transform, compute_dual, compute_mean_conf, visualize_data
+from src.networks import FCNN, genNet
+from src.costmatrix import euclidean_cost_matrix
+from src.datacreation import load_data, data_to_list
+from src.utils import compute_c_transform, compute_dual, compute_mean_conf, visualize_data
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

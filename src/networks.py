@@ -3,8 +3,8 @@ import torch.nn as nn
 import math
 from torchvision.transforms import Resize
 
-from utils import compute_c_transform
-from costmatrix import euclidean_cost_matrix
+from src.utils import compute_c_transform
+from src.costmatrix import euclidean_cost_matrix
 
 
 class FCNN(nn.Module):
