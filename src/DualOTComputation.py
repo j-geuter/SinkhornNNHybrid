@@ -344,7 +344,13 @@ class DualApproximator:
             out = self.net(x)
         return out
 
-    def test_potential(self, data, loss_function = F.mse_loss, relative = False, scale = 1):
+    def test_potential(
+                            self,
+                            data,
+                            loss_function = F.mse_loss,
+                            relative = False,
+                            scale = 1
+                        ):
         '''
         Tests the network on test data 'data'.
         :param data: data used for testing. Should be a list with each item being a dictionary with keys `d1`, `d2` and `u` which contain the two distributions and the dual potential as two-dimensional tensors.
@@ -366,7 +372,14 @@ class DualApproximator:
         l /= len(data)
         return l
 
-    def test_ws(self, data, loss_function = F.mse_loss, rel = False, return_ws = False, cost_norm = 1):
+    def test_ws(
+                    self,
+                    data,
+                    loss_function = F.mse_loss,
+                    rel = False,
+                    return_ws = False,
+                    cost_norm = 1
+                ):
         '''
         Tests the network on test data 'data'.
         :param data: data used for testing. Should be a list with each item being a dictionary with keys `d1`, `d2` and `u` which contain the two distributions and the dual potential as two-dimensional tensors.

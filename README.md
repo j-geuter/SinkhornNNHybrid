@@ -104,3 +104,12 @@ In this section, some further available functions are discussed.
 In this file, the Sinkhorn algorithm is available as `sinkhorn`. It supports parallelization, and specific initializations via the `start` argument. Note that if you choose to initialize it with a non-default initialization vector, you need to make sure that it does not contain values that are too small or too large. You can use the `min_start` and `max_start` arguments to bound the initialization vector, and 1e-35 and 1e35 are empirically good choices.
 With the `average_accuracy` function, you can compute the average accuracy of `sinkhorn` on a batch of data specifying an initialization via `init`.
 `log_sinkhorn` is an implementation of the Sinkhorn algorithm in the log domain; however, this was not used in the paper.
+
+## DualOTComputation.py
+The `DualApproximator` class offers some functionality to load and save models using the `load` and `save` functions. All trainable parameters can be reset using `reset_params`, or
+`reset_net` and `reset_gen_net` to reset only the approximator or generator resp.
+With `average_performance`, the average training performance can be computed over various instances of the networks. Note that this function repeatedly resets all trainable parameters in the process.
+`run_tests` is a simple function that lets you run all test datafiles passed with `testdata` through the network and compute the average error either on the potential or on the transport distance for each test dataset.
+
+## utils.py
+With `visualize_data` you can visualize multiple images, and a single image with `visualize_image`. `plot` can be used to plot data that does not come in confidence intervals. For all data that comes in confidence intervals (such as the output of `compare_iterations`), you should use `plot_conf` instead.

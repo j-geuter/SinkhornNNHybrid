@@ -11,7 +11,7 @@ from src.costmatrix import euclidean_cost_matrix
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-SCALE = 0.5
+SCALE = 1
 SMALL = SCALE*8
 MEDIUM = SCALE*12
 BIG = SCALE*16
