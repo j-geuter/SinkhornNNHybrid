@@ -1,4 +1,38 @@
-# SinkhornNNHybrid
+# Generative Adversarial Learning of Sinkhorn Algorithm Initializations
+Welcome to the repository of the paper [Generative Adversarial Learning of Sinkhorn Algorithm Initializations](https://arxiv.org/abs/2212.00133)!
+The paper aims at warm-starting the Sinkhorn algorithm with initializations computed by a neural network, which is trained in an adversarial fashion similar to a GAN using a second, generating neural network.
+It is based on the Master's thesis 'A Sinkhorn-NN Hybrid Algorithm' by Jonathan Geuter, but differs from the thesis in many aspects. The thesis, along with its codebase and a comprehensive README, can be found in the [thesis branch](https://github.com/j-geuter/SinkhornNNHybrid/tree/thesis) of this repository. The main branch contains the codebase of the paper (which differs significantly from the thesis' codebase).
+
+The code is structured in six files, `DualOTComputation`, `networks`, `utils`, `sinkhorn`, `costmatrix` and `datacreation`. The main files you'll need reproduce the results from the paper are `DualOTComputation` and `sinkhorn`, and `utils` contains some useful functions that let you visualize or plot data. To generate testing data first, you'll need the
+`datacreation` file. The `costmatrix` file contains a function to create cost matrices based on the Euclidean distance, and `networks` the neural network classes; you won't need to actively use either of these files unless you want to define your own cost function or network structure.
+The `requirements.txt` file lists all dependencies and their versions.  
+The project is CUDA compatible.
+
+# Reproduce Paper Results
+
+## Test Data
+The folder `Data` contains all four test datasets used in the paper: 'random', 'teddies', 'MNIST' and 'CIFAR'. If you wish to produce your own test datasets, you can do so using the `generate_dataset_data` function in the `datacreation` file.
+You can then load all test datafiles with the `load_data` function from `datacreation`:
+
+```python
+testdata = [load_data('Data/random.py'), load_data('Data/teddies.py'), load_data('Data/MNIST.py'), load_data('Data/CIFAR.py')]
+```
+
+## Creating a Model
+If you run the `DualOTComputation` file, it will automatically create a fully trained model `d` using the same approximator and generator used for all experiments in the paper.
+If you wish to create and train your own model, you can do so using the `DualApproximator` class in that file.
+E.g., to create and train a model on 10,000 unique training samples over 5 epochs, run:
+
+```python
+d = DualApproximator()
+d.learn_potential(n_samples=10000)
+```
+
+The `learn_potential` function offers various optional arguments. If you wish to print the loss alongside sample images of the generator during training, pass `prints=True`.
+If you want to learn using a loss on the transport distance (as outlined in Section 5.2 of the paper) instead of one on the dual potential, pass `learn_WS=True`.
+You can also collect performance information on the test datasets using the `verbose`, `num_tests`, `test_data`
+
+
 Welcome to the SinkhornNNHybrid repository! This repo provides the PyTorch implementation for the thesis 'A Sinkhorn-NN Hybrid Algorithm for Optimal
 Transport', which is available as `Thesis.pdf`.  
 The code is structured in six files, `DualOTComputation`, `networks`, `utils`, `sinkhorn`, `costmatrix` and `datacreation`. The main files you'll need reproduce the results from the thesis are `DualOTComputation` and `sinkhorn`, and `utils` contains some useful functions that let you visualize or plot data. To generate training and testing data first, you'll need the

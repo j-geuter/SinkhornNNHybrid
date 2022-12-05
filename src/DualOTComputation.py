@@ -474,7 +474,4 @@ class DualApproximator:
 
 
 if __name__ == '__main__':
-    length = input("Input width of data: ")
-    length = int(length)
-    lr = 0.005
-    d = DualApproximator(length=length, lr=lr)
+    d = DualApproximator(model='Models/net100k.pt', gen_model='Models/gen100k.pt')
