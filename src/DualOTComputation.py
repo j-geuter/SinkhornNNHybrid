@@ -16,16 +16,6 @@ from src.utils import compute_c_transform, compute_dual, compute_mean_conf, visu
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-def loss_max_ws(t, t2):
-    """
-    A simple loss function to learn the WS by gradient ascent on the WS computed
-    from the potential instead of using a loss of that guess and the ground truth.
-    :param t: tensor.
-    :param t2: tensor.
-    :return: one-element tensor.
-    """
-    return -t.sum()
-
 
 class DualApproximator:
 
@@ -133,7 +123,8 @@ class DualApproximator:
                             learn_gen = 1,
                             update_gen_lr = True,
                             prints = False,
-                            learn_WS = False
+                            learn_WS = False,
+                            max_dual = True
                         ):
         """
         Learns using `loss_function` loss on the dual potential. Can also learn using a loss on the transport distance with `learn_WS`=True.
@@ -152,7 +143,8 @@ class DualApproximator:
         :param learn_gen: in every `learn_gen`th iteration, the generating net will be updated. Can be set to `False` to turn off learning.
         :param update_gen_lr: if set to False, the generator's learning rate will remain constant.
         :param prints: if True, prints the losses of both networks during each iteration, along with sample images of the generator.
-        :param learn_WS: if True, learns using a loss on the transport distance instead of one on the potentials.
+        :param learn_WS: if True, learns using a loss on the transport distance instead of one on the potentials. NOTE: still computes ground truth transport costs if `max_dual`==False.
+        :param max_dual: if True, and if `learn_WS`==True, then no ground truth costs are computed. This should be used in combination with `loss_function=loss_max_ws`.
         :return: dict with key 'pot', and also 'WS' if `WS_perf`==True. At each key is a list containing a list for each test dataset in `test_data`. Each list contains information on the respective error (MSE on potential resp. L1 on Wasserstein distance) over the course of learning.
         """
         prior = MultivariateNormal(torch.zeros(128).to(device), torch.eye(128).to(device))
@@ -202,12 +194,15 @@ class DualApproximator:
                 pot = pot - pot.sum(1)[:, None]/pot.size(1)
 
             else:
-                pot = torch.tensor([ot.emd(x[0][:self.dim], x[0][self.dim:], self.costmatrix, log=True)[1]['cost']]) # name pot a bit misleading but streamlines code
-                pot = pot[None, :].to(torch.float32).to(device)
-                for k in range(1, batchsize):
-                    log = ot.emd(x[k][:self.dim], x[k][self.dim:], self.costmatrix, log=True)[1]
-                    pot = torch.cat((pot, torch.tensor([log['cost']])[None, :].to(torch.float32).to(device)), 0)
-                x = x.to(torch.float32)
+                if not max_dual:
+                    pot = torch.tensor([ot.emd(x[0][:self.dim], x[0][self.dim:], self.costmatrix, log=True)[1]['cost']]) # name pot a bit misleading but streamlines code
+                    pot = pot[None, :].to(torch.float32).to(device)
+                    for k in range(1, batchsize):
+                        log = ot.emd(x[k][:self.dim], x[k][self.dim:], self.costmatrix, log=True)[1]
+                        pot = torch.cat((pot, torch.tensor([log['cost']])[None, :].to(torch.float32).to(device)), 0)
+                    x = x.to(torch.float32)
+                else:
+                    pot = torch.zeros((batchsize, 1))
 
             for e in range(epochs):
                 perm = torch.randperm(batchsize).to(device)
@@ -404,7 +399,12 @@ class DualApproximator:
             return (l, ws_list)
         return l
 
-
-
-if __name__ == '__main__':
-    d = DualApproximator(model='Models/net100k.pt', gen_model='Models/gen100k.pt')
+def loss_max_ws(t, t2):
+    """
+    A simple loss function to learn the WS distance by gradient ascent on the WS distance computed
+    from the potential instead of using a loss on the potential approximation and the ground truth.
+    :param t: tensor.
+    :param t2: tensor.
+    :return: one-element tensor.
+    """
+    return -t.sum()

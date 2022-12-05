@@ -3,7 +3,7 @@ Welcome to the repository of the paper [Generative Adversarial Learning of Sinkh
 The paper aims at warm-starting the Sinkhorn algorithm with initializations computed by a neural network, which is trained in an adversarial fashion similar to a GAN using a second, generating neural network.
 It is based on the Master's thesis 'A Sinkhorn-NN Hybrid Algorithm' by Jonathan Geuter, but differs from the thesis in many aspects. The thesis, along with its codebase and a comprehensive README, can be found in the [thesis branch](https://github.com/j-geuter/SinkhornNNHybrid/tree/thesis) of this repository. The main branch contains the codebase of the paper (which differs significantly from the thesis' codebase).
 
-The code is structured in six files, `DualOTComputation.py`, `networks.py`, `utils.py`, `sinkhorn.py`, `costmatrix.py` and `datacreation.py`. The main files you'll need reproduce the results from the paper are `DualOTComputation.py` and `sinkhorn.py`, and `utils.py` contains some useful functions that let you visualize or plot data. To generate testing data, you'll need `datacreation.py`; however, all test datasets used in the paper are available in the `Data` folder. `costmatrix.py` contains a function to create cost matrices based on the Euclidean distance, and `networks.py` the neural network classes for the approximator and generator; you won't need to actively use either of these files unless you want to define your own cost function or network structure.  
+The code is structured in six files, `DualOTComputation.py`, `networks.py`, `utils.py`, `sinkhorn.py`, `costmatrix.py` and `datacreation.py`. The main files you'll need to reproduce the results from the paper are `DualOTComputation.py` and `sinkhorn.py`, and `utils.py` contains some useful functions that let you visualize or plot data. To generate testing data, you'll need `datacreation.py`; however, all test datasets used in the paper are available in the `Data` folder. `costmatrix.py` contains a function to create cost matrices based on the Euclidean distance, and `networks.py` the neural network classes for the approximator and generator; you won't need to actively use either of these files unless you want to define your own cost function or network structure.  
 The `requirements.txt` file lists all dependencies and their versions.  
 The project is CUDA compatible.
 
@@ -12,7 +12,7 @@ The project is CUDA compatible.
 
 ## Test Data
 The folder `Data` contains all four test datasets used in the paper: 'random', 'teddies', 'MNIST' and 'CIFAR'. If you wish to produce your own test datasets, you can do so using the `generate_dataset_data` function in `datacreation.py`.
-You can then load all test datafiles with the `load_data` function from `datacreation.py`:
+You can load all test datafiles with the `load_data` function from `datacreation.py`:
 
 ```python
 from src.datacreation import load_data
@@ -28,7 +28,7 @@ from src.DualOTComputation import DualApproximator
 d = DualApproximator(model='net100k.pt', gen_model='gen100k.pt')
 ```
 
-If you wish to train your own model, you can do so using using the `learn_potential` function in `DualOTComputation.py`:
+If you wish to train your own model instead, you can do so using the `learn_potential` function in `DualOTComputation.py`:
 
 ```python
 from src.DualOTComputation import DualApproximator
@@ -36,9 +36,9 @@ d = DualApproximator()
 d.learn_potential(n_samples=10000) # trains on 10,000 samples for 5 epochs, i.e. 50,000 samples total
 ```
 
-The `learn_potential` function in `DualOTComputation.py` offers various optional arguments. If you wish to print the loss alongside sample images of the generator during training, pass `prints=True`.
+The `learn_potential` function offers various optional arguments. For instance, if you wish to print the loss alongside sample images of the generator during training, pass `prints=True`.
 If you want to learn using a loss on the transport distance (as outlined in Section 5.2 of the paper) instead of one on the dual potential, pass `learn_WS=True`.
-You can also collect performance information on the test datasets using the `verbose`, `num_tests`, and `test_data` arguments, where you can pass `test_data=testdata` with `testdata` defined as above. The function will then return performance information upon completion.
+You can also collect performance information on the test datasets over the course of learning using the `verbose`, `num_tests`, and `test_data` arguments, where you can pass `test_data=testdata` with `testdata` defined as above. The function will then return performance information upon completion.
 
 ## Obtain Results
 To obtain the results from the paper, you'll need to run the `compare_iterations` function from `sinkhorn.py` for each test dataset. The results can then be saved using `save_data` from `datacreation.py`. I.e. with `testdata` as above:
@@ -52,9 +52,9 @@ for t in testdata:
   results.append(compare_iterations(t[:10], [None, d.net], ['default', 'net'], max_iter=2500, eps=.2, min_start=1e-35, max_start=1e35, plot=False, timeit=True))
 save_data(results, 'results.py')
 ```
-
+Note that for certain test datasets, such as CIFAR, you will get warnings that some samples compute to NaN. This happens in the Sinkhorn algorithm when the regularizer gets too small. However, as long as not all the samples in a batch compute to NaN, `compare_iterations` will automatically average over the non-NaN samples.
 Now `r = results[i]` contains the results for the respective test dataset. `r[0]['WS']` and `r[0]['marg']` contain information on the Wasserstein distance and dual potential errors;
-`r[1]` on the time it took for computations. In each of these locations, the values for the default initialization can be accessed at position `[0]` and for the network at position `[1]`. This will give you a 3-tuple, where each item is an array, the first one being the lower bound on the 95% confidence interval, the second one the mean, and the third one the upper bound on the confidence interval. So for example, the upper bound on the 95% confidence interval of the marginal constraint error of the default initialization for the first test dataset can be found at `results[0][0]['marg'][0][2]`.
+`r[1]` on the time it took for computations. In each of these locations, the values for the default initialization can be accessed at position `[0]`, and for the network initialization at position `[1]`. This will give you a 3-tuple, where each item is an array, the first one being the lower bound on the 95% confidence interval, the second one the mean, and the third one the upper bound on the confidence interval. So for example, the upper bound on the 95% confidence interval of the marginal constraint error of the default initialization for the first test dataset can be found at `results[0][0]['marg'][0][2]`.
 
 ## Plot Results
 You can plot various results using the `plot_conf` function from `utils.py`.
@@ -65,7 +65,7 @@ from src.datacreation import load_anydata
 results = load_anydata('results.py')
 ```
 
-Plot error on the marginal constraints:
+Plot errors on the marginal constraints:
 
 ```python
 from src.utils import plot_conf
@@ -95,3 +95,12 @@ iters = iterations_per_marginal(1e-2, testdata, [d.net, None], stepsize=25)
 ```
 
 Barycenters can be computed and visualized using the `visualize_barycenters` function in `utils.py`. Note that typically, between 15 and 30 gradient steps are sufficient.
+
+
+# More Code
+In this section, some further available functions are discussed.
+
+## sinkhorn.py
+In this file, the Sinkhorn algorithm is available as `sinkhorn`. It supports parallelization, and specific initializations via the `start` argument. Note that if you choose to initialize it with a non-default initialization vector, you need to make sure that it does not contain values that are too small or too large. You can use the `min_start` and `max_start` arguments to bound the initialization vector, and 1e-35 and 1e35 are empirically good choices.
+With the `average_accuracy` function, you can compute the average accuracy of `sinkhorn` on a batch of data specifying an initialization via `init`.
+`log_sinkhorn` is an implementation of the Sinkhorn algorithm in the log domain; however, this was not used in the paper.
