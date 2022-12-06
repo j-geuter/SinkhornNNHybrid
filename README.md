@@ -37,7 +37,6 @@ d.learn_potential(n_samples=10000) # trains on 10,000 samples for 5 epochs, i.e.
 ```
 
 The `learn_potential` function offers various optional arguments. For instance, if you wish to print the loss alongside sample images of the generator during training, pass `prints=True`.
-If you want to learn using a loss on the transport distance (as outlined in Section 5.2 of the paper) instead of one on the dual potential, pass `learn_WS=True` and `loss_function=loss_max_ws`.
 You can also collect performance information on the test datasets over the course of learning using the `verbose`, `num_tests`, and `test_data` arguments, where you can pass `test_data=testdata` with `testdata` defined as above. The function will then return performance information upon completion.
 
 ## Obtain Results
