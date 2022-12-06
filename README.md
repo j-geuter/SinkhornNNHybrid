@@ -37,7 +37,7 @@ d.learn_potential(n_samples=10000) # trains on 10,000 samples for 5 epochs, i.e.
 ```
 
 The `learn_potential` function offers various optional arguments. For instance, if you wish to print the loss alongside sample images of the generator during training, pass `prints=True`.
-If you want to learn using a loss on the transport distance (as outlined in Section 5.2 of the paper) instead of one on the dual potential, pass `learn_WS=True`.
+If you want to learn using a loss on the transport distance (as outlined in Section 5.2 of the paper) instead of one on the dual potential, pass `learn_WS=True` and `loss_function=loss_max_ws`.
 You can also collect performance information on the test datasets over the course of learning using the `verbose`, `num_tests`, and `test_data` arguments, where you can pass `test_data=testdata` with `testdata` defined as above. The function will then return performance information upon completion.
 
 ## Obtain Results
@@ -69,7 +69,7 @@ Plot errors on the marginal constraints:
 
 ```python
 from src.utils import plot_conf
-plot_conf(2500, results[0][0]['marg']+results[1][0]['marg']+results[2][0]['marg']+results[3][0]['marg'], ['default', 'net']*4, 'number of iterations', 'marginal constraint violation', titles=['random', 'teddies', 'MNIST', 'CIFAR'], separate_plots=[[0,1], [2,3], [4,5], [6,7]], rows=2, columns=2, slice=(5,24), scale_y=1/784**2)
+plot_conf(2500, results[0][0]['marg']+results[1][0]['marg']+results[2][0]['marg']+results[3][0]['marg'], ['default', 'net']*4, 'number of iterations', 'marginal constraint violation', titles=['random', 'teddies', 'MNIST', 'CIFAR'], separate_plots=[[0,1], [2,3], [4,5], [6,7]], rows=2, columns=2, slice=(4,24))
 ```
 
 Plot relative Wasserstein distance errors w.r.t. the number of Sinkhorn iterations:
@@ -101,7 +101,7 @@ Barycenters can be computed and visualized using the `visualize_barycenters` fun
 In this section, some further available functions are discussed.
 
 ## sinkhorn.py
-In this file, the Sinkhorn algorithm is available as `sinkhorn`. It supports parallelization, and specific initializations via the `start` argument. Note that if you choose to initialize it with a non-default initialization vector, you need to make sure that it does not contain values that are too small or too large. You can use the `min_start` and `max_start` arguments to bound the initialization vector, and 1e-35 and 1e35 are empirically good choices.
+In this file, the Sinkhorn algorithm is available as `sinkhorn`. It supports parallelization, and specific initializations via the `start` argument. Note that if you choose to initialize it with a non-default initialization vector, you need to make sure that it does not contain values that are too small or too large. You can use the `min_start` and `max_start` arguments to bound the initialization vector, and 1e-35 resp. 1e35 are empirically good choices.
 With the `average_accuracy` function, you can compute the average accuracy of `sinkhorn` on a batch of data specifying an initialization via `init`.
 `log_sinkhorn` is an implementation of the Sinkhorn algorithm in the log domain; however, this was not used in the paper.
 
