@@ -200,9 +200,9 @@ class DualApproximator:
                     for k in range(1, batchsize):
                         log = ot.emd(x[k][:self.dim], x[k][self.dim:], self.costmatrix, log=True)[1]
                         pot = torch.cat((pot, torch.tensor([log['cost']])[None, :].to(torch.float32).to(device)), 0)
-                    x = x.to(torch.float32)
                 else:
-                    pot = torch.zeros((batchsize, 1))
+                    pot = torch.zeros((batchsize, 1)).to(device)
+                x = x.to(torch.float32)
 
             for e in range(epochs):
                 perm = torch.randperm(batchsize).to(device)
