@@ -280,7 +280,6 @@ class DualApproximator:
 
     def average_performance(
                                 self,
-                                learn_function,
                                 test_data,
                                 nb_runs = 10,
                                 conf = .95,
@@ -290,16 +289,15 @@ class DualApproximator:
                                 **kwargs
                             ):
         """
-        Runs a learning function and computes the average performance and a confidence interval w.r.t. a loss function `loss` across `nb_runs` runs.
+        Computes the average performance and a confidence interval w.r.t. a loss function `loss` across `nb_runs` training instances.
         NOTE: resets all trainable parameters.
-        :param learn_function: function used for learning.
         :param test_data: test data.
         :param nb_runs: number of runs, i.e. models trained.
         :param conf: confidence for the confidence interval.
         :param save_models: optional boolean. If True, saves all trained networks after their training finished.
         :param model_name: file name of saved models. Models will be saved as `name`_0.pt to `name`_(`nb_runs`-1).pt.
         :param WS_perf: if True, also collects performance information on the WS distance.
-        :param **kwargs: keyword arguments passed to `learn_function`.
+        :param **kwargs: keyword arguments passed to `learn_potential`.
         :return: if WS_perf==True, returns (results, WS_results), otherwise results. For each test set in test_data, results contains a 3-tuple computed by `compute_mean_conf` which captures the average MSE error on the potential over the course of learning. WS_results is similar, but for the L1 error on the Wasserstein distance.
         """
         test_nb = len(test_data)
@@ -309,7 +307,7 @@ class DualApproximator:
         for i in range(nb_runs):
             self.reset_params()
             print(f'Processing model {i+1} of {nb_runs}.')
-            perf = learn_function(verbose=2, **kwargs)
+            perf = self.learn_potential(verbose=2, test_data=test_data, WS_perf=WS_perf, **kwargs)
             if save_models:
                 self.save(f'{model_name}_{i}.pt')
             for j in range(test_nb):
