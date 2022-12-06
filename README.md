@@ -36,8 +36,9 @@ d = DualApproximator()
 d.learn_potential(n_samples=10000) # trains on 10,000 samples for 5 epochs, i.e. 50,000 samples total
 ```
 
-The `learn_potential` function offers various optional arguments. For instance, if you wish to print the loss alongside sample images of the generator during training, pass `prints=True`.
+The `learn_potential` function offers various optional arguments. For instance, if you wish to print the loss alongside sample images of the generator during training, pass `prints=True`. If you want to learn using a loss on the transport distance (as outlined in Section 5.2 of the paper) instead of one on the dual potential, pass `learn_WS=True` and `loss_function=loss_max_ws`.
 You can also collect performance information on the test datasets over the course of learning using the `verbose`, `num_tests`, and `test_data` arguments, where you can pass `test_data=testdata` with `testdata` defined as above. The function will then return performance information upon completion.
+To average performance over multiple models, use the average_performance function. Note that this function repeatedly resets all trainable parameters in the process.
 
 ## Obtain Results
 To obtain the results from the paper, you'll need to run the `compare_iterations` function from `sinkhorn.py` for each test dataset. The results can then be saved using `save_data` from `datacreation.py`. I.e. with `testdata` as above:
@@ -107,7 +108,6 @@ With the `average_accuracy` function, you can compute the average accuracy of `s
 ## DualOTComputation.py
 The `DualApproximator` class offers some functionality to load and save models using the `load` and `save` functions. All trainable parameters can be reset using `reset_params`, or
 `reset_net` and `reset_gen_net` to reset only the approximator or generator resp.
-With `average_performance`, the average training performance can be computed over various instances of the networks. Note that this function repeatedly resets all trainable parameters in the process.
 `run_tests` is a simple function that lets you run all test datafiles passed with `testdata` through the network and compute the average error either on the potential or on the transport distance for each test dataset.
 
 ## utils.py
