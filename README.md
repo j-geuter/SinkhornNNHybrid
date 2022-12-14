@@ -1,4 +1,4 @@
-# SinkhornNNHybrid
+# A Sinkhorn-NN Hybrid Algorithm for Optimal Transport
 Welcome to the SinkhornNNHybrid repository! This repo provides the PyTorch implementation for the thesis 'A Sinkhorn-NN Hybrid Algorithm for Optimal
 Transport', which is available as `Thesis.pdf`. To check out the codebase for the paper 'Generative Adversarial Learning of Sinkhorn Algorithm Initializations' instead, go to the [main branch](https://github.com/j-geuter/SinkhornNNHybrid/tree/main).  
 The code is structured in six files, `DualOTComputation`, `networks`, `utils`, `sinkhorn`, `costmatrix` and `datacreation`. The main files you'll need reproduce the results from the thesis are `DualOTComputation` and `sinkhorn`, and `utils` contains some useful functions that let you visualize or plot data. To generate training and testing data first, you'll need the
