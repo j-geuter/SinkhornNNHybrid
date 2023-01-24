@@ -122,6 +122,29 @@ def compute_dual(alpha, beta, u, v = None, c = None):
     values = torch.sum(alpha*u, dim=1) + torch.sum(beta*v, dim=1)
     return values[None, :].T
 
+def hilbert_loss(u, v):
+    """
+    Loss function using the hilbert metric.
+    """
+    return (hilbert_metric(u,v).sum())
+
+def hilbert_metric(u, v):
+    """
+    Computes Hilbert projective metric of a batch of samples.
+    :param u: two-dimensional tensor.
+    :param v: two-dimensional tensor.
+    """
+    return (max_norm(u.log() - v.log()))
+
+def max_norm(x):
+    """
+    Auxiliary function for `hilbert_metric`.
+    :param x: two-dimensional tensor.
+    """
+    return (x.max(1)[0] - x.min(1)[0])
+
+
+
 def compute_mean_conf(data, conf):
     """
     Given a list of lists of datapoints, computes their mean values and a confidence interval.
