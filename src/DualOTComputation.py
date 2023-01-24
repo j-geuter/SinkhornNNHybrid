@@ -36,7 +36,7 @@ class DualApproximator:
         :param gen_lr: generative model learning rate.
         :param exponent: exponent with which the euclidean distance can be exponentiated.
         :param model: Optional path to a torch model to be loaded for the approximator.
-        :param gen_model: Optional path toa  torch model to be loaded for the generator.
+        :param gen_model: Optional path to a  torch model to be loaded for the generator.
         :param norm_cost: if set to True, uses the cost matrix in the unit square. Otherwise, the square size is determined by `length`.
         """
         self.length = length
