@@ -119,7 +119,7 @@ class DualApproximator:
                             WS_perf = False,
                             rel_WS = True,
                             cost_norm_WS = 1,
-                            gen_images = True,
+                            gen_images = False,
                             learn_gen = 1,
                             update_gen_lr = True,
                             prints = False,
