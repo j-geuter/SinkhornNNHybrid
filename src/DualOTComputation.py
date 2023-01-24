@@ -37,7 +37,7 @@ class DualApproximator:
         :param exponent: exponent with which the euclidean distance can be exponentiated.
         :param model: Optional path to a torch model to be loaded for the approximator.
         :param gen_model: Optional path toa  torch model to be loaded for the generator.
-        :param norm_cost: if set to True, uses the cost matrix in the unit square. Otherwise, the square size is determined by the `length`.
+        :param norm_cost: if set to True, uses the cost matrix in the unit square. Otherwise, the square size is determined by `length`.
         """
         self.length = length
         self.dim = length*length
@@ -328,6 +328,7 @@ class DualApproximator:
         A helper function that runs multiple sets of test data through a `test_function`.
         :param testdata: list containing test data.
         :param test_function: function used for testing data. Should be `self.test_potential` or `self.test_ws`.
+        :param **kwargs: keyword arguments passed onto `test_function`.
         :return: a list containing the return values of `test_function` for each of the test sets in `testdata`.
         """
         results = []
