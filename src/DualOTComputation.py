@@ -36,7 +36,7 @@ class DualApproximator:
         :param gen_lr: generative model learning rate.
         :param exponent: exponent with which the euclidean distance can be exponentiated.
         :param model: Optional path to a torch model to be loaded for the approximator.
-        :param gen_model: Optional path toa  torch model to be loaded for the generator.
+        :param gen_model: Optional path to a  torch model to be loaded for the generator.
         :param norm_cost: if set to True, uses the cost matrix in the unit square. Otherwise, the square size is determined by `length`.
         """
         self.length = length
@@ -352,13 +352,15 @@ class DualApproximator:
                             data,
                             loss_function = F.mse_loss,
                             relative = False,
-                            scale = 1
+                            scale = 1,
+                            scale_u = 1
                         ):
         '''
         Tests the network on test data 'data'.
         :param data: data used for testing. Should be a list with each item being a dictionary with keys `d1`, `d2` and `u` which contain the two distributions and the dual potential as two-dimensional tensors.
         :param relative: if True, computes the error relative to the distributions.
         :param scale: A scaling factor to scale the error by. Can e.g. be used to rescale a cost function to the cost in the unit square.
+        :param scale_u: A scaling factor to scale the ground truth potential by. Can e.g. be used to cast potentials belonging to a cost function to a rescaled version of that cost function.
         :return: average `loss_function` error on the dual potential.
         '''
         self.net.eval()
@@ -366,12 +368,12 @@ class DualApproximator:
         with torch.no_grad():
             for batch in data:
                 if not relative:
-                    loss = loss_function(self.predict(batch['d1'], batch['d2']), batch['u'])
+                    loss = loss_function(self.predict(batch['d1'], batch['d2']), scale_u*batch['u'])
                 else:
                     approx_pot = self.predict(batch['d1'], batch['d2'])*batch['d1']*(batch['d1'].size(1))
-                    true_pot = batch['u']*batch['d1']*(batch['d1'].size(1))
+                    true_pot = scale_u*batch['u']*batch['d1']*(batch['d1'].size(1))
                     loss = loss_function(approx_pot, true_pot)
-                l += loss.item()
+                l += scale*loss.item()
         l /= len(data)
         return l
 
