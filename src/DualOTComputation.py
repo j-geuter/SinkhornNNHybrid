@@ -204,7 +204,7 @@ class DualApproximator:
                     x = x.to(torch.float32)
                     start = compute_c_transform(self.costmatrix, self.net(x).detach())
                     start = torch.exp(start/eps)
-                    pot = sinkhorn(x[:, :self.dim], x[:, self.dim:], self.costmatrix, eps, bootstrap_k, start, log=True, verbose=False, min_start=1e-35, max_start=1e35)['u']
+                    pot = sinkhorn(x[:, :self.dim], x[:, self.dim:], self.costmatrix, eps, bootstrap_k, start, log=True, tens_type=torch.float32, verbose=False, min_start=1e-35, max_start=1e35)['u']
                     pot = pot - pot.sum(1)[:, None]/pot.size(1)
                     pot = pot.detach()
 
