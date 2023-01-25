@@ -121,7 +121,6 @@ def average_accuracy(
     :param data: data used for computation. Either a dict with keys 'd1', 'd2', 'u' and 'cost' or a list of such dicts in which case they are concatenated.
     :param init: initialization scheme. Takes functions that compute the first dual variable of the OT problem. If None, the default initialization is used instead.
     :param nb_iters: number of iterations used in the Sinkhorn algorithm.
-    :param loss_f: loss function used to calculate error.
     :param eps: regularizer used for Sinkhorn algorithm.
     :param min_start: sets all values in Sinkhorn initialization smaller than `min_start` to `min_start`.
     :param max_start: sets all values in Sinkhorn initialization larger than `max_start` to `max_start`.
