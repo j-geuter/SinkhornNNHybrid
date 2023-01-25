@@ -131,8 +131,8 @@ class DualApproximator:
                             eps = 0.2,
                             min_start = 1e-30,
                             max_start = 1e30,
-                            min_pot = -1e8,
-                            max_pot = 1e8
+                            min_pot = -1e2,
+                            max_pot = 1e2
                         ):
         """
         Learns using `loss_function` loss on the dual potential. Can also learn using a loss on the transport distance with `learn_WS`=True.
@@ -217,8 +217,8 @@ class DualApproximator:
                     pot = torch.where(pot<torch.tensor(max_pot).to(pot.dtype).to(device), pot, torch.tensor(max_pot).to(pot.dtype).to(device))
                     pot = pot - pot.sum(1)[:, None]/pot.size(1)
                     pot = pot.detach()
-                    print(pot.min())
-                    print(pot.max())
+                    #print(pot.min())
+                    #print(pot.max())
 
             else:
                 if not max_dual:
