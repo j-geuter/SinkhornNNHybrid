@@ -128,7 +128,11 @@ class DualApproximator:
                             max_dual = True,
                             bootstrap = False,
                             bootstrap_k = 1,
-                            eps = 0.2
+                            eps = 0.2,
+                            min_start = 1e-30,
+                            max_start = 1e30,
+                            min_pot = -1e8,
+                            max_pot = 1e8
                         ):
         """
         Learns using `loss_function` loss on the dual potential. Can also learn using a loss on the transport distance with `learn_WS`=True.
@@ -152,6 +156,10 @@ class DualApproximator:
         :param bootstrap: if True, uses a bootstrap loss on the Sinkhorn iterates.
         :param bootstrap_k: sets the number of Sinkhorn iterations for the bootstrap loss.
         :param eps: epsilon used in Sinkhorn algorithm for bootstrap loss.
+        :param min_start: lower bound on Sinkhorn initialization.
+        :param max_start: upper bound on Sinkhorn initialization.
+        :param min_pot: lower bound on potential computed with Sinkhorn.
+        :param max_pot: upper bound on potential computed with Sinkhorn.
         :return: dict with key 'pot', and also 'WS' if `WS_perf`==True. At each key is a list containing a list for each test dataset in `test_data`. Each list contains information on the respective error (MSE on potential resp. L1 on Wasserstein distance) over the course of learning.
         """
         prior = MultivariateNormal(torch.zeros(128).to(device), torch.eye(128).to(device))
@@ -204,7 +212,9 @@ class DualApproximator:
                     x = x.to(torch.float32)
                     start = compute_c_transform(self.costmatrix, self.net(x).detach())
                     start = torch.exp(start/eps)
-                    pot = sinkhorn(x[:, :self.dim], x[:, self.dim:], self.costmatrix, eps, bootstrap_k, start, log=True, tens_type=torch.float32, verbose=False, min_start=1e-35, max_start=1e35)['u']
+                    pot = sinkhorn(x[:, :self.dim], x[:, self.dim:], self.costmatrix, eps, bootstrap_k, start, log=True, tens_type=torch.float32, verbose=False, min_start=min_start, max_start=max_start)['u']
+                    pot = torch.where(pot>torch.tensor(min_pot).to(pot.dtype).to(device), pot, torch.tensor(min_pot).to(pot.dtype).to(device))
+                    pot = torch.where(pot<torch.tensor(max_pot).to(pot.dtype).to(device), pot, torch.tensor(max_pot).to(pot.dtype).to(device))
                     pot = pot - pot.sum(1)[:, None]/pot.size(1)
                     pot = pot.detach()
                     print(pot.min())
