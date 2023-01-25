@@ -24,7 +24,8 @@ def sinkhorn(
                 tens_type = torch.float64,
                 verbose = True,
                 min_start = None,
-                max_start = None
+                max_start = None,
+                return_mcv = True
             ):
     """
     Sinkhorn's algorithm to compute the dual potentials and the dual problem value. Allows for parallelization.
@@ -40,6 +41,7 @@ def sinkhorn(
     :param verbose: if False, turns off all print statements.
     :param min_start: if given, sets all entries in the starting vector smaller than `min_start` equal to `min_start`.
     :param max_start: if given, sets all entries in the starting vector larger than `max_start` equal to `max_start`.
+    :param return_mcv: if True, and if log==True, also returns the marginal constraint violations.
     :return: If log==False: transport costs. Else: A dict with keys 'cost' (transport costs), 'plan' (transport plans), 'iterations' (number of iterations), 'u' (first dual potential, NOT the scaling vector), 'v' (second dual potential, NOT the scaling vector), 'average marginal constraint violation'.
     """
     mu = d1.clone().to(device)
@@ -80,27 +82,29 @@ def sinkhorn(
     if not log:
         return cost
     else:
-        mu_star = torch.matmul(gamma, torch.ones(u.size(0)).to(tens_type).to(device))
-        nu_star = torch.matmul(torch.ones(u.size(0)).to(tens_type).to(device), gamma)
+        if return_mcv:
+            mu_star = torch.matmul(gamma, torch.ones(u.size(0)).to(tens_type).to(device))
+            nu_star = torch.matmul(torch.ones(u.size(0)).to(tens_type).to(device), gamma)
 
-        mu_err = (mu.T - mu_star).abs().sum(1)
-        mu_nan = mu_err.isnan().sum()
-        mu_err = torch.where(mu_err.isnan(), torch.tensor(0).to(tens_type).to(device), mu_err)
+            mu_err = (mu.T - mu_star).abs().sum(1)
+            mu_nan = mu_err.isnan().sum()
+            mu_err = torch.where(mu_err.isnan(), torch.tensor(0).to(tens_type).to(device), mu_err)
 
-        nu_err = (nu.T - nu_star).abs().sum(1)
-        nu_nan = nu_err.isnan().sum()
-        nu_err = torch.where(nu_err.isnan(), torch.tensor(0).to(tens_type).to(device), nu_err)
+            nu_err = (nu.T - nu_star).abs().sum(1)
+            nu_nan = nu_err.isnan().sum()
+            nu_err = torch.where(nu_err.isnan(), torch.tensor(0).to(tens_type).to(device), nu_err)
 
-        if mu_nan/mu_err.size(0) > 0.1 or nu_nan/nu_err.size(0) > 0.1:
-            perc1 = 100*mu_nan/mu_err.size(0)
-            perc2 = 100*nu_nan/nu_err.size(0)
-            perc = '%.2f'%((perc1 + perc2)/2)
-            if verbose:
-                print(f'Warning! {perc}% of marginal constraint violations are NaN.')
+            if mu_nan/mu_err.size(0) > 0.1 or nu_nan/nu_err.size(0) > 0.1:
+                perc1 = 100*mu_nan/mu_err.size(0)
+                perc2 = 100*nu_nan/nu_err.size(0)
+                perc = '%.2f'%((perc1 + perc2)/2)
+                if verbose:
+                    print(f'Warning! {perc}% of marginal constraint violations are NaN.')
 
-        mu_err = mu_err.sum()/(mu_err.size(0) - mu_nan)
-        nu_err = nu_err.sum()/(nu_err.size(0) - nu_nan)
-        return {'cost': cost, 'plan': gamma, 'iterations': it, 'u': eps * torch.log(u).T, 'v': eps * torch.log(v).T, 'average marginal constraint violation': (mu_err + nu_err)/2}
+            mu_err = mu_err.sum()/(mu_err.size(0) - mu_nan)
+            nu_err = nu_err.sum()/(nu_err.size(0) - nu_nan)
+            return {'cost': cost, 'plan': gamma, 'iterations': it, 'u': eps * torch.log(u).T, 'v': eps * torch.log(v).T, 'average marginal constraint violation': (mu_err + nu_err)/2}
+        return {'cost': cost, 'plan': gamma, 'iterations': it, 'u': eps * torch.log(u).T, 'v': eps * torch.log(v).T}
 
 def average_accuracy(
                         data,
