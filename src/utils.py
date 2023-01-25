@@ -122,19 +122,13 @@ def compute_dual(alpha, beta, u, v = None, c = None):
     values = torch.sum(alpha*u, dim=1) + torch.sum(beta*v, dim=1)
     return values[None, :].T
 
-def hilbert_loss(u, v):
-    """
-    Loss function using the hilbert metric.
-    """
-    return (hilbert_metric(u,v).sum())
-
 def hilbert_metric(u, v):
     """
-    Computes Hilbert projective metric of a batch of samples.
+    Computes Hilbert projective metric of the Sinkhorn iterates on a batch of samples of dual potentials, which cancels out the logarithm. Note that for simplicity, we leave out the scaling factor 1/epsilon.
     :param u: two-dimensional tensor.
     :param v: two-dimensional tensor.
     """
-    return (max_norm(u.log() - v.log()))
+    return (max_norm(u - v).sum())
 
 def max_norm(x):
     """
