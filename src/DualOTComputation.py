@@ -12,6 +12,7 @@ from src.networks import FCNN, genNet
 from src.costmatrix import euclidean_cost_matrix
 from src.datacreation import load_data, data_to_list
 from src.utils import compute_c_transform, compute_dual, compute_mean_conf, visualize_data
+from src.sinkhorn import sinkhorn
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -124,7 +125,10 @@ class DualApproximator:
                             update_gen_lr = True,
                             prints = False,
                             learn_WS = False,
-                            max_dual = True
+                            max_dual = True,
+                            bootstrap = False,
+                            bootstrap_k = 1,
+                            eps = 0.2
                         ):
         """
         Learns using `loss_function` loss on the dual potential. Can also learn using a loss on the transport distance with `learn_WS`=True.
@@ -145,6 +149,9 @@ class DualApproximator:
         :param prints: if True, prints the losses of both networks during each iteration, along with sample images of the generator.
         :param learn_WS: if True, learns using a loss on the transport distance instead of one on the potentials. NOTE: still computes ground truth transport costs if `max_dual`==False.
         :param max_dual: if True, and if `learn_WS`==True, then no ground truth costs are computed. This should be used in combination with `loss_function=loss_max_ws`.
+        :param bootstrap: if True, uses a bootstrap loss on the Sinkhorn iterates.
+        :param bootstrap_k: sets the number of Sinkhorn iterations for the bootstrap loss.
+        :param eps: epsilon used in Sinkhorn algorithm for bootstrap loss.
         :return: dict with key 'pot', and also 'WS' if `WS_perf`==True. At each key is a list containing a list for each test dataset in `test_data`. Each list contains information on the respective error (MSE on potential resp. L1 on Wasserstein distance) over the course of learning.
         """
         prior = MultivariateNormal(torch.zeros(128).to(device), torch.eye(128).to(device))
@@ -185,13 +192,22 @@ class DualApproximator:
             x = self.gen_net(x_0).detach()
 
             if not learn_WS:
-                pot = ot.emd(x[0][:self.dim], x[0][self.dim:], self.costmatrix, log=True)[1]['u']
-                pot = pot[None, :].to(torch.float32).to(device)
-                for k in range(1, batchsize):
-                    log = ot.emd(x[k][:self.dim], x[k][self.dim:], self.costmatrix, log=True)[1]
-                    pot = torch.cat((pot, log['u'][None, :].to(torch.float32).to(device)), 0)
-                x = x.to(torch.float32)
-                pot = pot - pot.sum(1)[:, None]/pot.size(1)
+                if not bootstrap:
+                    pot = ot.emd(x[0][:self.dim], x[0][self.dim:], self.costmatrix, log=True)[1]['u']
+                    pot = pot[None, :].to(torch.float32).to(device)
+                    for k in range(1, batchsize):
+                        log = ot.emd(x[k][:self.dim], x[k][self.dim:], self.costmatrix, log=True)[1]
+                        pot = torch.cat((pot, log['u'][None, :].to(torch.float32).to(device)), 0)
+                    x = x.to(torch.float32)
+                    pot = pot - pot.sum(1)[:, None]/pot.size(1)
+                else:
+                    x = x.to(torch.float32)
+                    start = compute_c_transform(self.costmatrix, d.net(torch.cat((x[0][:self.dim], x[0][self.dim:]), 1).to(device)).detach())
+                    start = torch.exp(start/eps)
+                    u = sinkhorn(x[0][:self.dim], x[0][self.dim:], self.costmatrix, eps, bootstrap_k, start, verbose=False, min_start=1e-35, max_start=1e35)
+                    pot = eps*u.log()
+                    pot = pot - pot.sum(1)[:, None]/pot.size(1)
+                    pot = pot.detach()
 
             else:
                 if not max_dual:
