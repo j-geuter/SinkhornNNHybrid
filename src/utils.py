@@ -249,7 +249,7 @@ def plot_conf(
     :param x_label: label for x axis.
     :param y_label: label for y axis.
     :param titles: optional titles for each plot.
-    :param separate_plots: optional parameter to split data into separate plots. If given, this should be a list of lists, each tuple containing the data indices for a plot.
+    :param separate_plots: optional parameter to split data into separate plots. If given, this should be a list of tuples, each tuple containing the data indices for a plot.
     :param seperate_legends: if True, creates a unique legend for each subplot, otherwise creates a single legend for all plots.
     :param collect_legends: if True, collects all legends for all subplots for the legend (only if separate_legends==False). Otherwise, assumes legends for subplots are identical and uses only one subplot's legend.
     :param rows: number of rows for subplots. If None, all subplots will be in one row.
